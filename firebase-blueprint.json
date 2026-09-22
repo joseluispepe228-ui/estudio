@@ -1,0 +1,48 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Estadísticas y perfil del estudiante infantil",
+      "type": "object",
+      "properties": {
+        "totalScore": { "type": "number", "description": "Puntaje total acumulado" },
+        "totalStars": { "type": "number", "description": "Estrellas doradas acumuladas" },
+        "currentStreak": { "type": "number", "description": "Racha actual de aciertos" },
+        "highestStreak": { "type": "number", "description": "Racha máxima histórica" },
+        "sessionsCount": { "type": "number", "description": "Número de sesiones realizadas" },
+        "level": { "type": "number", "description": "Nivel pedagógico" },
+        "accuracyByType": { "type": "object", "description": "Efectividad por tipo de operación" },
+        "tableMastery": { "type": "object", "description": "Dominio de tablas del 1 al 12" },
+        "weakCategories": { "type": "array", "description": "Categorías que necesitan refuerzo" },
+        "aiRecommendations": { "type": "object", "description": "Recomendaciones generadas por Gemini" }
+      },
+      "required": ["totalScore", "totalStars", "level"]
+    },
+    "GameSession": {
+      "title": "GameSession",
+      "description": "Registro de una ronda de 10 ejercicios",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Identificador de la sesión" },
+        "timestamp": { "type": "number", "description": "Marca de tiempo de la sesión" },
+        "mode": { "type": "string", "description": "Modo de juego jugado" },
+        "totalExercises": { "type": "number", "description": "Total de ejercicios en la ronda" },
+        "correctCount": { "type": "number", "description": "Cantidad de aciertos" },
+        "score": { "type": "number", "description": "Puntos obtenidos" },
+        "starsEarned": { "type": "number", "description": "Estrellas ganadas" },
+        "avgTimeSpentMs": { "type": "number", "description": "Tiempo medio de respuesta en milisegundos" }
+      },
+      "required": ["id", "timestamp", "mode", "totalExercises", "correctCount"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Almacena los datos y progreso pedagógico del usuario"
+    },
+    "/users/{userId}/sessions/{sessionId}": {
+      "schema": "GameSession",
+      "description": "Historial de sesiones de juego del usuario"
+    }
+  }
+}

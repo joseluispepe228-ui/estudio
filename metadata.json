@@ -1,0 +1,6 @@
+{
+  "name": "Aventura Matemática",
+  "description": "Aplicación Web Progresiva (PWA) de aprendizaje de matemáticas adaptativa para niñas y niños con tutor Gemini y panel para padres.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

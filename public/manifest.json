@@ -1,0 +1,17 @@
+{
+  "name": "Aventura Matemática",
+  "short_name": "AventuraMath",
+  "description": "Aplicación Web Progresiva interactiva de matemáticas adaptativas para niñas con tutor Gemini",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fdf4ff",
+  "theme_color": "#9333ea",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

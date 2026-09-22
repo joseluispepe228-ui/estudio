@@ -1,0 +1,22 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Permitir a usuarios autenticados o anónimos gestionar sus perfiles y sesiones
+    match /users/{userId} {
+      allow read, write: if true;
+      
+      match /sessions/{sessionId} {
+        allow read, write: if true;
+      }
+      
+      match /recommendations/{recId} {
+        allow read, write: if true;
+      }
+    }
+    
+    // Colección de reportes de Gemini y configuración
+    match /reports/{reportId} {
+      allow read, write: if true;
+    }
+  }
+}
