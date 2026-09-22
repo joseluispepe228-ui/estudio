@@ -9,9 +9,19 @@ export function usePWAInstall() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstallable, setIsInstallable] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
+  const [isInIframe, setIsInIframe] = useState(false);
 
   useEffect(() => {
-    // Detectar si ya está en modo standalone (instalada)
+    // 1. Detectar si la app corre dentro de un iframe (como el visor de AI Studio)
+    try {
+      const inIframe = window.self !== window.top;
+      setIsInIframe(inIframe);
+    } catch {
+      setIsInIframe(true);
+    }
+
+    // 2. Detectar si ya está instalada o en modo standalone
     const isStandalone =
       window.matchMedia('(display-mode: standalone)').matches ||
       (window.navigator as unknown as { standalone?: boolean }).standalone === true;
@@ -21,10 +31,14 @@ export function usePWAInstall() {
       return;
     }
 
+    // 3. Detectar si es iOS (iPhone/iPad/iPod) donde Apple no emite beforeinstallprompt
+    const userAgent = window.navigator.userAgent.toLowerCase();
+    const isIOSDevice = /iphone|ipad|ipod/.test(userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    setIsIOS(isIOSDevice);
+
+    // 4. Capturar el evento beforeinstallprompt de Chromium/Android/Edge
     const handleBeforeInstallPrompt = (e: Event) => {
-      // Prevenir el prompt automático del navegador
       e.preventDefault();
-      // Guardar el evento para dispararlo cuando el usuario haga clic en el botón
       setDeferredPrompt(e as BeforeInstallPromptEvent);
       setIsInstallable(true);
     };
@@ -45,21 +59,29 @@ export function usePWAInstall() {
   }, []);
 
   const promptInstall = async () => {
-    if (!deferredPrompt) return;
-
-    try {
-      await deferredPrompt.prompt();
-      const choiceResult = await deferredPrompt.userChoice;
-      if (choiceResult.outcome === 'accepted') {
-        setIsInstalled(true);
+    if (deferredPrompt) {
+      try {
+        await deferredPrompt.prompt();
+        const choiceResult = await deferredPrompt.userChoice;
+        if (choiceResult.outcome === 'accepted') {
+          setIsInstalled(true);
+        }
+      } catch (err) {
+        console.warn('Error al mostrar prompt nativo PWA:', err);
+      } finally {
+        setDeferredPrompt(null);
+        setIsInstallable(false);
       }
-    } catch (err) {
-      console.warn('Error al mostrar prompt de instalación PWA:', err);
-    } finally {
-      setDeferredPrompt(null);
-      setIsInstallable(false);
+      return;
     }
   };
 
-  return { isInstallable, isInstalled, promptInstall };
+  return {
+    isInstallable: !!deferredPrompt,
+    hasNativePrompt: !!deferredPrompt,
+    isInstalled,
+    isIOS,
+    isInIframe,
+    promptInstall,
+  };
 }

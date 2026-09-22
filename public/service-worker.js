@@ -1,9 +1,12 @@
 // Service Worker para Aventura Matemática PWA
-const CACHE_NAME = 'aventura-matematica-v1';
+const CACHE_NAME = 'aventura-matematica-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/manifest.json',
+  '/pwa-192x192.png',
+  '/pwa-512x512.png',
+  '/apple-touch-icon.png',
   '/icon-192.svg',
   '/icon-512.svg',
   '/icon.svg'
@@ -13,7 +16,9 @@ const ASSETS_TO_CACHE = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
+      return cache.addAll(ASSETS_TO_CACHE).catch((err) => {
+        console.warn('Algunos activos no se pudieron precachear inmediatamente:', err);
+      });
     }).then(() => self.skipWaiting())
   );
 });

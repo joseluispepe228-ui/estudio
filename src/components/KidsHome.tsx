@@ -3,6 +3,7 @@ import { Play, Flame, Star, Sparkles, Volume2, VolumeX, Timer, ChevronRight, Han
 import type { UserStats } from '../types/math';
 import { playSound } from '../utils/effects';
 import { usePWAInstall } from '../hooks/usePWAInstall';
+import { PWAInstallModal } from './PWAInstallModal';
 
 interface KidsHomeProps {
   userStats: UserStats;
@@ -25,7 +26,17 @@ export const KidsHome: React.FC<KidsHomeProps> = ({
 }) => {
   const [selectedTable, setSelectedTable] = useState<number>(7);
   const [greeting, setGreeting] = useState<string>('¡Hola, Sofía! 🌸');
-  const { isInstallable, isInstalled, promptInstall } = usePWAInstall();
+  const [showInstallModal, setShowInstallModal] = useState<boolean>(false);
+  const { isInstallable, hasNativePrompt, isInstalled, isIOS, isInIframe, promptInstall } = usePWAInstall();
+
+  const handleInstallClick = () => {
+    playSound('click');
+    if (hasNativePrompt && !isInIframe) {
+      promptInstall();
+    } else {
+      setShowInstallModal(true);
+    }
+  };
 
   useEffect(() => {
     const hours = new Date().getHours();
@@ -97,10 +108,7 @@ export const KidsHome: React.FC<KidsHomeProps> = ({
           {!isInstalled && (
             <button
               id="install-pwa-header-btn"
-              onClick={() => {
-                playSound('click');
-                promptInstall();
-              }}
+              onClick={handleInstallClick}
               className="px-3.5 py-2 rounded-2xl bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-extrabold text-xs shadow-md flex items-center gap-1.5 transition transform active:scale-95 animate-pulse"
               title="Instalar como app en tu pantalla de inicio"
             >
@@ -370,10 +378,7 @@ export const KidsHome: React.FC<KidsHomeProps> = ({
           {!isInstalled && (
             <button
               id="install-pwa-footer-btn"
-              onClick={() => {
-                playSound('click');
-                promptInstall();
-              }}
+              onClick={handleInstallClick}
               className="text-purple-600 hover:text-purple-800 font-extrabold flex items-center gap-1 transition"
             >
               <Smartphone className="w-3.5 h-3.5" />
@@ -392,6 +397,16 @@ export const KidsHome: React.FC<KidsHomeProps> = ({
           🔒 Acceso para Padres
         </button>
       </footer>
+
+      {/* Modal Guía y Diálogo de Instalación PWA */}
+      <PWAInstallModal
+        isOpen={showInstallModal}
+        onClose={() => setShowInstallModal(false)}
+        onTriggerInstall={promptInstall}
+        hasNativePrompt={hasNativePrompt}
+        isIOS={isIOS}
+        isInIframe={isInIframe}
+      />
     </div>
   );
 };
