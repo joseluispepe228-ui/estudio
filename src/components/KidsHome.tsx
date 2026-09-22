@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Flame, Star, Sparkles, Volume2, VolumeX, Timer, ChevronRight, Hand, Puzzle } from 'lucide-react';
+import { Play, Flame, Star, Sparkles, Volume2, VolumeX, Timer, ChevronRight, Hand, Puzzle, Download, Smartphone } from 'lucide-react';
 import type { UserStats } from '../types/math';
 import { playSound } from '../utils/effects';
+import { usePWAInstall } from '../hooks/usePWAInstall';
 
 interface KidsHomeProps {
   userStats: UserStats;
@@ -24,6 +25,7 @@ export const KidsHome: React.FC<KidsHomeProps> = ({
 }) => {
   const [selectedTable, setSelectedTable] = useState<number>(7);
   const [greeting, setGreeting] = useState<string>('¡Hola, Sofía! 🌸');
+  const { isInstallable, isInstalled, promptInstall } = usePWAInstall();
 
   useEffect(() => {
     const hours = new Date().getHours();
@@ -90,6 +92,22 @@ export const KidsHome: React.FC<KidsHomeProps> = ({
             <Timer className="w-5 h-5" />
             <span className="hidden sm:inline">{timerEnabled ? 'Tiempo ON' : 'Sin prisa'}</span>
           </button>
+
+          {/* Botón PWA: Instalar App */}
+          {!isInstalled && (
+            <button
+              id="install-pwa-header-btn"
+              onClick={() => {
+                playSound('click');
+                promptInstall();
+              }}
+              className="px-3.5 py-2 rounded-2xl bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-extrabold text-xs shadow-md flex items-center gap-1.5 transition transform active:scale-95 animate-pulse"
+              title="Instalar como app en tu pantalla de inicio"
+            >
+              <Download className="w-4 h-4" />
+              <span>Instalar App</span>
+            </button>
+          )}
         </div>
       </header>
 
@@ -345,9 +363,24 @@ export const KidsHome: React.FC<KidsHomeProps> = ({
         </div>
       </div>
 
-      {/* Pie de página con acceso al panel de padres */}
+      {/* Pie de página con acceso al panel de padres y opción de instalación PWA */}
       <footer className="pt-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-slate-400 text-xs border-t border-slate-200">
-        <p>Aventura Matemática PWA • Aprendizaje didáctico e interactivo</p>
+        <div className="flex items-center gap-3">
+          <p>Aventura Matemática PWA • Aprendizaje didáctico e interactivo</p>
+          {!isInstalled && (
+            <button
+              id="install-pwa-footer-btn"
+              onClick={() => {
+                playSound('click');
+                promptInstall();
+              }}
+              className="text-purple-600 hover:text-purple-800 font-extrabold flex items-center gap-1 transition"
+            >
+              <Smartphone className="w-3.5 h-3.5" />
+              <span>Instalar en el móvil / PC</span>
+            </button>
+          )}
+        </div>
         <button
           id="open-parents-dashboard-link"
           onClick={() => {

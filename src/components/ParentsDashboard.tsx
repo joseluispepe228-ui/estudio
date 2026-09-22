@@ -11,7 +11,8 @@ import {
   RefreshCw,
   KeyRound,
   FileText,
-  AlertCircle
+  AlertCircle,
+  RotateCcw
 } from 'lucide-react';
 import type { GameSession, UserStats } from '../types/math';
 import { generateParentReportWithGemini } from '../services/gemini';
@@ -23,6 +24,7 @@ interface ParentsDashboardProps {
   onBack: () => void;
   geminiApiKey: string;
   onUpdateApiKey: (key: string) => void;
+  onResetData: () => void;
 }
 
 export const ParentsDashboard: React.FC<ParentsDashboardProps> = ({
@@ -31,6 +33,7 @@ export const ParentsDashboard: React.FC<ParentsDashboardProps> = ({
   onBack,
   geminiApiKey,
   onUpdateApiKey,
+  onResetData,
 }) => {
   // Autenticación simple mediante pin de seguridad
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -40,6 +43,7 @@ export const ParentsDashboard: React.FC<ParentsDashboardProps> = ({
   // Reporte Semanal Gemini
   const [parentReport, setParentReport] = useState<string>('');
   const [isGeneratingReport, setIsGeneratingReport] = useState<boolean>(false);
+  const [showResetConfirm, setShowResetConfirm] = useState<boolean>(false);
 
   // Verificación de PIN (Por defecto 1234 para comodidad de los padres, configurable)
   const handleVerifyPin = (e: React.FormEvent) => {
@@ -155,8 +159,8 @@ export const ParentsDashboard: React.FC<ParentsDashboardProps> = ({
           </div>
         </div>
 
-        {/* Clave API opcional para Gemini */}
-        <div className="flex items-center gap-2">
+        {/* Clave API opcional para Gemini y Botón de Reinicio */}
+        <div className="flex flex-wrap items-center gap-2">
           <input
             id="parent-gemini-key-input"
             type="password"
@@ -166,8 +170,56 @@ export const ParentsDashboard: React.FC<ParentsDashboardProps> = ({
             className="text-xs px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-hidden w-44"
             title="Si no se define, se usa la clave de entorno o el motor heurístico pedagógico"
           />
+
+          <button
+            id="parent-reset-data-btn"
+            type="button"
+            onClick={() => setShowResetConfirm(true)}
+            className="px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold border border-rose-200 flex items-center gap-1.5 transition"
+            title="Borrar estadísticas de prueba e iniciar desde 0 para Sofía"
+          >
+            <RotateCcw className="w-3.5 h-3.5 text-rose-600" />
+            <span>Reiniciar a 0</span>
+          </button>
         </div>
       </div>
+
+      {/* Modal de confirmación para reiniciar */}
+      {showResetConfirm && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-rose-100 space-y-4 animate-in fade-in zoom-in duration-200">
+            <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
+              <RotateCcw className="w-6 h-6" />
+            </div>
+            <div className="text-center space-y-1">
+              <h3 className="text-lg font-black text-slate-800">¿Reiniciar todo a 0?</h3>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Se limpiarán las estadísticas de prueba (estrellas, sesiones, tablas y racha). Así Sofía comenzará su progreso real desde el primer día.
+              </p>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowResetConfirm(false)}
+                className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowResetConfirm(false);
+                  onResetData();
+                  playSound('click');
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md transition"
+              >
+                Sí, reiniciar a 0
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Tarjetas resumen de métricas clave */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">

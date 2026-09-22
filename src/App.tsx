@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot, collection, query, orderBy, limit, getDocs, deleteDoc } from 'firebase/firestore';
 import { db, auth, ensureAuth } from './services/firebase';
 import { analyzeSessionWithGemini } from './services/gemini';
 import type { GameSession, UserStats, AIAnalysisResponse, Exercise, ExerciseResult } from './types/math';
@@ -12,45 +12,45 @@ import { MatchPairsGame } from './components/MatchPairsGame';
 import { SessionSummary } from './components/SessionSummary';
 import { ParentsDashboard } from './components/ParentsDashboard';
 
-// Estado inicial pedagógico para niña de 9 años
-const defaultStats: UserStats = {
-  totalScore: 120,
-  totalStars: 15,
-  currentStreak: 3,
-  highestStreak: 7,
-  sessionsCount: 3,
-  level: 2,
+// Estado inicial limpio desde 0 para el inicio del aprendizaje real de Sofía
+export const zeroStats: UserStats = {
+  totalScore: 0,
+  totalStars: 0,
+  currentStreak: 0,
+  highestStreak: 0,
+  sessionsCount: 0,
+  level: 1,
   accuracyByType: {
-    multiplication: { correct: 22, total: 28 },
-    addition: { correct: 18, total: 20 },
-    subtraction: { correct: 12, total: 18 },
+    multiplication: { correct: 0, total: 0 },
+    addition: { correct: 0, total: 0 },
+    subtraction: { correct: 0, total: 0 },
   },
   tableMastery: {
-    1: { correct: 10, total: 10, avgTimeMs: 1800 },
-    2: { correct: 10, total: 10, avgTimeMs: 2100 },
-    3: { correct: 9, total: 10, avgTimeMs: 2500 },
-    4: { correct: 8, total: 10, avgTimeMs: 3200 },
-    5: { correct: 10, total: 10, avgTimeMs: 1900 },
-    6: { correct: 7, total: 10, avgTimeMs: 4100 },
-    7: { correct: 5, total: 10, avgTimeMs: 5800 },
-    8: { correct: 4, total: 10, avgTimeMs: 6200 },
-    9: { correct: 6, total: 10, avgTimeMs: 4900 },
-    10: { correct: 10, total: 10, avgTimeMs: 2300 },
-    11: { correct: 9, total: 10, avgTimeMs: 3400 },
-    12: { correct: 5, total: 10, avgTimeMs: 6500 },
+    1: { correct: 0, total: 0, avgTimeMs: 0 },
+    2: { correct: 0, total: 0, avgTimeMs: 0 },
+    3: { correct: 0, total: 0, avgTimeMs: 0 },
+    4: { correct: 0, total: 0, avgTimeMs: 0 },
+    5: { correct: 0, total: 0, avgTimeMs: 0 },
+    6: { correct: 0, total: 0, avgTimeMs: 0 },
+    7: { correct: 0, total: 0, avgTimeMs: 0 },
+    8: { correct: 0, total: 0, avgTimeMs: 0 },
+    9: { correct: 0, total: 0, avgTimeMs: 0 },
+    10: { correct: 0, total: 0, avgTimeMs: 0 },
+    11: { correct: 0, total: 0, avgTimeMs: 0 },
+    12: { correct: 0, total: 0, avgTimeMs: 0 },
   },
-  weakCategories: ['mult-7', 'mult-8', 'sub-regroup'],
+  weakCategories: [],
   aiRecommendations: {
-    summary: '¡Sofía, vas genial con las tablas del 2, 3 y 5! Reforzaremos con trucos divertidos las tablas del 7 y 8 y las restas donde pedimos prestado.',
-    suggestedFocus: ['Tabla del 7', 'Tabla del 8', 'Restas con reserva'],
-    motivationalQuote: '¡Eres una superheroína, Sofía! 🌟',
+    summary: '¡Hola Sofía! Empieza jugando en la Gran Aventura o practicando tu tabla favorita para desbloquear trucos personalizados.',
+    suggestedFocus: ['Gran Aventura', 'Tabla del 2'],
+    motivationalQuote: '¡Bienvenida a tu aventura matemática, Sofía! 🌟',
     generatedAt: Date.now()
   }
 };
 
 export default function App() {
   const [currentView, setCurrentView] = useState<'home' | 'game' | 'match_pairs' | 'summary' | 'parents'>('home');
-  const [userStats, setUserStats] = useState<UserStats>(defaultStats);
+  const [userStats, setUserStats] = useState<UserStats>(zeroStats);
   const [sessions, setSessions] = useState<GameSession[]>([]);
   const [currentSessionMode, setCurrentSessionMode] = useState<'adventure' | 'multiplication' | 'addition' | 'subtraction' | 'ai_recommended' | 'drag_drop' | 'match_pairs'>('adventure');
   const [currentSessionTable, setCurrentSessionTable] = useState<number | undefined>(undefined);
@@ -67,6 +67,7 @@ export default function App() {
   // Inicialización y persistencia con Firebase Firestore
   useEffect(() => {
     let unsubscribeUser: (() => void) | undefined;
+    let unsubscribeSessions: (() => void) | undefined;
 
     async function initFirebaseSync() {
       try {
@@ -77,7 +78,7 @@ export default function App() {
         const userSnap = await getDoc(userDocRef);
 
         if (!userSnap.exists()) {
-          await setDoc(userDocRef, defaultStats);
+          await setDoc(userDocRef, zeroStats);
         } else {
           setUserStats(userSnap.data() as UserStats);
         }
@@ -86,6 +87,17 @@ export default function App() {
           if (snapshot.exists()) {
             setUserStats(snapshot.data() as UserStats);
           }
+        });
+
+        // Escuchar sesiones en tiempo real
+        const sessionsRef = collection(db, 'users', userId, 'sessions');
+        const q = query(sessionsRef, orderBy('timestamp', 'asc'), limit(50));
+        unsubscribeSessions = onSnapshot(q, (snapshot) => {
+          const loadedSessions: GameSession[] = [];
+          snapshot.forEach((d) => {
+            loadedSessions.push(d.data() as GameSession);
+          });
+          setSessions(loadedSessions);
         });
       } catch (err) {
         console.warn('Uso de almacenamiento local mientras se sincroniza Firebase:', err);
@@ -96,8 +108,32 @@ export default function App() {
 
     return () => {
       if (unsubscribeUser) unsubscribeUser();
+      if (unsubscribeSessions) unsubscribeSessions();
     };
   }, []);
+
+  // Función para reiniciar todas las estadísticas a 0 (para padres)
+  const handleResetData = async () => {
+    setUserStats(zeroStats);
+    setSessions([]);
+    setLastFinishedSession(null);
+    setLastAiAnalysis(null);
+
+    try {
+      const user = auth.currentUser;
+      const userId = user?.uid || 'default_child_profile';
+      const userDocRef = doc(db, 'users', userId);
+      await setDoc(userDocRef, zeroStats);
+
+      // Borrar sesiones previas de prueba en Firestore
+      const sessionsRef = collection(db, 'users', userId, 'sessions');
+      const snaps = await getDocs(sessionsRef);
+      const deletePromises = snaps.docs.map((docSnap) => deleteDoc(docSnap.ref));
+      await Promise.all(deletePromises);
+    } catch (err) {
+      console.warn('Error al reiniciar en Firestore:', err);
+    }
+  };
 
   // Iniciar una ronda de juego según el modo seleccionado
   const handleStartMode = (
@@ -291,6 +327,7 @@ export default function App() {
           onBack={() => setCurrentView('home')}
           geminiApiKey={geminiApiKey}
           onUpdateApiKey={setGeminiApiKey}
+          onResetData={handleResetData}
         />
       )}
     </main>
