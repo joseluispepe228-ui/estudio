@@ -158,7 +158,7 @@ export function generateSubtractionExercise(forceRegrouping: boolean = true): Ex
   };
 }
 
-// 4. NUEVO: Generador de Problemas Matemáticos Contextualizados (del cuaderno de Sofía)
+// 4. Generador de Problemas Matemáticos Contextualizados (del cuaderno escolar)
 export function generateWordProblemExercise(): Exercise {
   const problemTemplates = [
     {
@@ -295,9 +295,8 @@ export function generateWordProblemExercise(): Exercise {
   };
 }
 
-// 5. NUEVO: Multiplicación Reagrupando Unidades, Decenas y Centenas (Práctica 2 y 3 del cuaderno)
+// 5. Multiplicación Reagrupando Unidades, Decenas y Centenas (Práctica 2 y 3 del cuaderno)
 export function generateRegroupingMultExercise(): Exercise {
-  // Ejemplos como 18 × 7, 35 × 5, 486 × 2, 279 × 3, 304 × 3, 156 × 4, 174 × 4, 196 × 4, 238 × 4, 248 × 4, 155 × 5, 199 × 5
   const samplePairs = [
     { n1: 18, n2: 7 },
     { n1: 35, n2: 5 },
@@ -311,13 +310,15 @@ export function generateRegroupingMultExercise(): Exercise {
     { n1: 248, n2: 4 },
     { n1: 155, n2: 5 },
     { n1: 199, n2: 5 },
+    { n1: 326, n2: 3 },
+    { n1: 415, n2: 2 },
+    { n1: 184, n2: 5 },
   ];
 
   const pick = samplePairs[Math.floor(Math.random() * samplePairs.length)];
   const correctAnswer = pick.n1 * pick.n2;
   const options = generateDistractors(correctAnswer, 0, 30);
 
-  // Calcular desglose de unidades y decenas para guía paso a paso
   const unitsOnly = pick.n1 % 10;
   const tensOnly = Math.floor((pick.n1 % 100) / 10);
   const unitsMult = unitsOnly * pick.n2;
@@ -343,20 +344,126 @@ export function generateRegroupingMultExercise(): Exercise {
   };
 }
 
-// 6. NUEVO: Descifrar la Isla del Tesoro (Práctica 3 del cuaderno: "En la isla de C-H-I-L-O-E")
-export function generateIslandTreasureExercises(): Exercise[] {
-  // Lista de cofres con letras para formar CHILOE o ISLAS
-  const islandItems = [
-    { n1: 486, n2: 2, letter: 'C', ans: 972 },
-    { n1: 156, n2: 4, letter: 'H', ans: 624 },
-    { n1: 248, n2: 4, letter: 'I', ans: 992 },
-    { n1: 35, n2: 5, letter: 'L', ans: 175 },
-    { n1: 199, n2: 5, letter: 'O', ans: 995 },
-    { n1: 279, n2: 3, letter: 'E', ans: 837 },
-  ];
+// 6. Colección de Aventuras con Palabras Secretas para la Isla del Tesoro
+// Cada vez que Sofía juega una ronda nueva, se selecciona una palabra misteriosa diferente al azar
+export interface IslandAdventure {
+  word: string;
+  themeName: string;
+  description: string;
+  items: { n1: number; n2: number; letter: string; ans: number }[];
+}
 
-  return islandItems.map((item) => ({
-    id: `island-${item.letter}-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`,
+export const ISLAND_ADVENTURES: IslandAdventure[] = [
+  {
+    word: 'CHILOE',
+    themeName: 'Isla Grande de Chiloé 🏰',
+    description: 'Famosa por sus palafitos de colores, iglesias de madera y mitos mágicos del sur.',
+    items: [
+      { n1: 486, n2: 2, letter: 'C', ans: 972 },
+      { n1: 156, n2: 4, letter: 'H', ans: 624 },
+      { n1: 248, n2: 4, letter: 'I', ans: 992 },
+      { n1: 35, n2: 5, letter: 'L', ans: 175 },
+      { n1: 199, n2: 5, letter: 'O', ans: 995 },
+      { n1: 279, n2: 3, letter: 'E', ans: 837 },
+    ]
+  },
+  {
+    word: 'TESORO',
+    themeName: 'El Tesoro Pirata 🏴‍☠️',
+    description: 'El cofre del capitán con gemas relucientes y monedas de oro puro.',
+    items: [
+      { n1: 140, n2: 3, letter: 'T', ans: 420 },
+      { n1: 279, n2: 3, letter: 'E', ans: 837 },
+      { n1: 185, n2: 2, letter: 'S', ans: 370 },
+      { n1: 199, n2: 5, letter: 'O', ans: 995 },
+      { n1: 174, n2: 4, letter: 'R', ans: 696 },
+      { n1: 155, n2: 5, letter: 'O', ans: 775 },
+    ]
+  },
+  {
+    word: 'MAGIA',
+    themeName: 'La Cueva Mágica ✨',
+    description: 'Donde los duendes matemáticos esconden hechizos de cálculo rápido.',
+    items: [
+      { n1: 238, n2: 4, letter: 'M', ans: 952 },
+      { n1: 125, n2: 3, letter: 'A', ans: 375 },
+      { n1: 196, n2: 4, letter: 'G', ans: 784 },
+      { n1: 248, n2: 4, letter: 'I', ans: 992 },
+      { n1: 215, n2: 3, letter: 'A', ans: 645 },
+    ]
+  },
+  {
+    word: 'PASCUA',
+    themeName: 'Isla de Pascua (Rapa Nui) 🗿',
+    description: 'La misteriosa isla polinésica con los colosales Moais guardianes.',
+    items: [
+      { n1: 165, n2: 3, letter: 'P', ans: 495 },
+      { n1: 142, n2: 5, letter: 'A', ans: 710 },
+      { n1: 185, n2: 2, letter: 'S', ans: 370 },
+      { n1: 486, n2: 2, letter: 'C', ans: 972 },
+      { n1: 214, n2: 4, letter: 'U', ans: 856 },
+      { n1: 125, n2: 3, letter: 'A', ans: 375 },
+    ]
+  },
+  {
+    word: 'ESTRELLA',
+    themeName: 'El Faro Estelar 🌟',
+    description: 'Guía a los barcos perdidos con la luz de las constelaciones matemáticas.',
+    items: [
+      { n1: 279, n2: 3, letter: 'E', ans: 837 },
+      { n1: 185, n2: 2, letter: 'S', ans: 370 },
+      { n1: 140, n2: 3, letter: 'T', ans: 420 },
+      { n1: 174, n2: 4, letter: 'R', ans: 696 },
+      { n1: 156, n2: 4, letter: 'E', ans: 624 },
+      { n1: 35, n2: 5, letter: 'L', ans: 175 },
+      { n1: 42, n2: 5, letter: 'L', ans: 210 },
+      { n1: 125, n2: 3, letter: 'A', ans: 375 },
+    ]
+  },
+  {
+    word: 'DELFIN',
+    themeName: 'Bahía de los Delfines 🐬',
+    description: 'Las aguas cristalinas donde saltan los delfines matemáticos más veloces.',
+    items: [
+      { n1: 218, n2: 3, letter: 'D', ans: 654 },
+      { n1: 279, n2: 3, letter: 'E', ans: 837 },
+      { n1: 35, n2: 5, letter: 'L', ans: 175 },
+      { n1: 180, n2: 4, letter: 'F', ans: 720 },
+      { n1: 248, n2: 4, letter: 'I', ans: 992 },
+      { n1: 135, n2: 5, letter: 'N', ans: 675 },
+    ]
+  },
+  {
+    word: 'PIRATA',
+    themeName: 'Navío del Capitán Barbanegra ⚓',
+    description: 'El viejo galeón con las llaves de todos los cofres del archipiélago.',
+    items: [
+      { n1: 165, n2: 3, letter: 'P', ans: 495 },
+      { n1: 125, n2: 3, letter: 'I', ans: 375 },
+      { n1: 174, n2: 4, letter: 'R', ans: 696 },
+      { n1: 142, n2: 5, letter: 'A', ans: 710 },
+      { n1: 140, n2: 3, letter: 'T', ans: 420 },
+      { n1: 215, n2: 3, letter: 'A', ans: 645 },
+    ]
+  }
+];
+
+// Generar una ronda de la Isla del Tesoro con palabra aleatoria o seleccionada
+export function generateIslandTreasureExercises(preferredWord?: string): Exercise[] {
+  // Elegir una aventura al azar si no se especifica
+  let adventure = preferredWord
+    ? ISLAND_ADVENTURES.find(a => a.word.toLowerCase() === preferredWord.toLowerCase())
+    : undefined;
+
+  if (!adventure) {
+    const randomIndex = Math.floor(Math.random() * ISLAND_ADVENTURES.length);
+    adventure = ISLAND_ADVENTURES[randomIndex];
+  }
+
+  const { word, themeName, description, items } = adventure;
+
+  return items.map((item, idx) => ({
+    id: `island-${word}-${idx}-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`,
     type: 'multiplication',
     num1: item.n1,
     num2: item.n2,
@@ -366,11 +473,18 @@ export function generateIslandTreasureExercises(): Exercise[] {
     categoryKey: 'island-treasure',
     layout: 'vertical',
     contextQuestion: {
-      story: `Cofre secreto con la letra mágica [ ${item.letter} ] 🗝️`,
-      subQuestion: `Resuelve ${item.n1} × ${item.n2} para descubrir la clave de la Isla de CHILOÉ:`,
-      unitLabel: `clave letra ${item.letter}`,
+      story: `Cofre secreto #${idx + 1} del mapa de "${themeName}" 🗝️`,
+      subQuestion: `Resuelve ${item.n1} × ${item.n2} para descubrir la letra mágica [ ${item.letter} ] en la posición ${idx + 1}:`,
+      unitLabel: `clave [${item.letter}]`,
       iconName: 'island',
-      visualHint: `Multiplica con reserva: ${item.n1} × ${item.n2}`
+      visualHint: `${description} • Multiplica verticalmente: ${item.n1} × ${item.n2}`,
+      islandData: {
+        targetWord: word,
+        themeName,
+        letter: item.letter,
+        letterIndex: idx,
+        totalLetters: items.length
+      }
     }
   }));
 }
@@ -413,7 +527,6 @@ export function generateSessionExercises(
       const forceRegroup = i % 2 === 0;
       ex = generateSubtractionExercise(forceRegroup);
     } else if (mode === 'drag_drop') {
-      // Arrastrar y soltar: mezcla con sumas y restas verticales
       if (i % 3 === 0) {
         ex = generateMultiplicationExercise();
       } else if (i % 3 === 1) {
@@ -435,7 +548,6 @@ export function generateSessionExercises(
         ex = generateAdditionExercise('medium');
       }
     } else {
-      // Gran Aventura: incluye problemas del mundo real y sumas/restas verticales
       if (i === 0 || i === 5) {
         ex = generateWordProblemExercise();
       } else if (i === 2 || i === 7) {

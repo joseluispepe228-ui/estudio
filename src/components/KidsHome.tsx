@@ -298,9 +298,9 @@ export const KidsHome: React.FC<KidsHomeProps> = ({
                   Desafío
                 </span>
               </div>
-              <h4 className="text-lg font-black leading-tight">Isla del Tesoro (Chiloé)</h4>
+              <h4 className="text-lg font-black leading-tight">La Isla del Tesoro</h4>
               <p className="text-xs text-teal-100 mt-1 leading-relaxed">
-                Descifra los cofres secretos resolviendo operaciones para descifrar la palabra mágica C-H-I-L-O-E.
+                ¡Palabras secretas dinámicas! Descifra CHILOÉ, TESORO, PASCUA, MAGIA y más abriendo cofres matemáticos.
               </p>
             </div>
             <div className="mt-4 pt-3 border-t border-white/20 flex items-center justify-between text-xs font-black text-teal-100 group-hover:text-white">

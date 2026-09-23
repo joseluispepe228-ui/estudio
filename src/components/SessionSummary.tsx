@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Trophy, Star, Sparkles, ArrowRight, RotateCcw, Home, Clock, Target } from 'lucide-react';
+import { Trophy, Star, Sparkles, RotateCcw, Home, Clock, Target, Compass } from 'lucide-react';
 import type { GameSession, AIAnalysisResponse } from '../types/math';
 import { fireSuperCelebration, playSound } from '../utils/effects';
 
@@ -39,6 +39,21 @@ export const SessionSummary: React.FC<SessionSummaryProps> = ({
         <p className="text-base text-purple-600 font-bold mt-1">
           ¡Has ganado {session.starsEarned} estrellas doradas! ⭐
         </p>
+
+        {/* Revelación de la palabra si jugó la Isla del Tesoro */}
+        {session.mode === 'island_treasure' && session.islandDiscoveredWord && (
+          <div className="my-5 p-4 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-600 to-cyan-700 text-white shadow-lg space-y-2">
+            <div className="flex items-center justify-center gap-1.5 text-xs font-black uppercase tracking-wider text-yellow-200">
+              <Compass className="w-4 h-4" /> ¡Palabra Secreta Descifrada del Tesoro!
+            </div>
+            <div className="text-3xl md:text-4xl font-black tracking-widest text-yellow-300 font-mono">
+              [ {session.islandDiscoveredWord} ]
+            </div>
+            <p className="text-xs text-teal-100">
+              ¡Has abierto todos los cofres del enigma! En la próxima partida descubrirás una palabra diferente.
+            </p>
+          </div>
+        )}
 
         {/* Métricas destacadas */}
         <div className="grid grid-cols-3 gap-3 my-6">

@@ -470,7 +470,11 @@ export const ParentsDashboard: React.FC<ParentsDashboardProps> = ({
                         {session.mode === 'subtraction' && 'Restas Verticales'}
                         {session.mode === 'word_problems' && 'Problemas Matemáticos'}
                         {session.mode === 'regrouping_mult' && 'Multiplicación con Reagrupación'}
-                        {session.mode === 'island_treasure' && 'Isla del Tesoro (Chiloé)'}
+                        {session.mode === 'island_treasure' && (
+                          session.islandDiscoveredWord
+                            ? `Isla del Tesoro: [${session.islandDiscoveredWord}]`
+                            : 'Isla del Tesoro'
+                        )}
                         {session.mode === 'drag_drop' && 'Arrastra al Resultado'}
                         {session.mode === 'match_pairs' && 'Parejas Mágicas'}
                         {session.mode === 'ai_recommended' && 'Refuerzo Adaptativo Gemini'}

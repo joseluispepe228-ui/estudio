@@ -209,6 +209,11 @@ export default function App() {
     const deviceType = detectDeviceType();
     const timeOfDayLabel = new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+    // Si fue modo Isla del Tesoro, extraer la palabra objetivo de la ronda
+    const islandDiscoveredWord = currentSessionMode === 'island_treasure'
+      ? activeExercises[0]?.contextQuestion?.islandData?.targetWord
+      : undefined;
+
     const newSession: GameSession = {
       id: `session-${now}`,
       timestamp: now,
@@ -224,6 +229,7 @@ export default function App() {
       starsEarned,
       avgTimeSpentMs,
       results,
+      islandDiscoveredWord,
     };
 
     setLastFinishedSession(newSession);

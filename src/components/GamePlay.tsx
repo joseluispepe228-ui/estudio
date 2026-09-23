@@ -7,7 +7,9 @@ import {
   BookOpen,
   HelpCircle,
   Award,
-  Layers
+  Layers,
+  Compass,
+  CheckCircle2
 } from 'lucide-react';
 import type { Exercise, ExerciseResult } from '../types/math';
 import { playSound, fireSuccessConfetti } from '../utils/effects';
@@ -34,6 +36,9 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [showHint, setShowHint] = useState(false);
 
+  // Registro de letras descubiertas para la Isla del Tesoro
+  const [discoveredLetters, setDiscoveredLetters] = useState<Record<number, string>>({});
+
   // Temporizador opcional
   const [timeLeft, setTimeLeft] = useState(15);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -42,6 +47,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   const currentExercise = exercises[currentIndex];
   const isDragMode = currentExercise?.interactionStyle === 'drag_and_drop';
   const isVertical = currentExercise?.layout === 'vertical' || currentExercise?.type === 'addition' || currentExercise?.type === 'subtraction';
+  const islandData = currentExercise?.contextQuestion?.islandData;
 
   useEffect(() => {
     exerciseStartTimeRef.current = Date.now();
@@ -86,6 +92,13 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     if (isCorrect) {
       playSound('correct');
       fireSuccessConfetti();
+      // Si estamos en la Isla del Tesoro, revelar la letra obtenida
+      if (islandData) {
+        setDiscoveredLetters((prev) => ({
+          ...prev,
+          [islandData.letterIndex]: islandData.letter
+        }));
+      }
     } else {
       playSound('wrong');
     }
@@ -186,8 +199,54 @@ export const GamePlay: React.FC<GamePlayProps> = ({
         )}
       </div>
 
-      {/* TARJETA DIDÁCTICA DE PROBLEMA MATEMÁTICO (Si existe contexto como en el cuaderno) */}
-      {currentExercise.contextQuestion && (
+      {/* PANEL ESPECIAL PARA LA ISLA DEL TESORO: MAPA DE PALABRA SECRETA */}
+      {islandData && (
+        <div className="bg-gradient-to-r from-emerald-600 via-teal-700 to-cyan-800 rounded-3xl p-5 text-white shadow-xl space-y-3 animate-in fade-in">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Compass className="w-5 h-5 text-yellow-300 animate-spin" style={{ animationDuration: '8s' }} />
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-teal-200">
+                  Enigma del Archipiélago
+                </span>
+                <h3 className="text-base md:text-lg font-black leading-tight text-yellow-300">
+                  {islandData.themeName}
+                </h3>
+              </div>
+            </div>
+            <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-white/20 text-white border border-white/20">
+              Palabra de {islandData.totalLetters} letras
+            </span>
+          </div>
+
+          {/* Casillas de letras de la palabra escondida */}
+          <div className="bg-slate-950/40 rounded-2xl p-3.5 border border-white/10 flex items-center justify-center gap-2 md:gap-3 flex-wrap">
+            {islandData.targetWord.split('').map((char, idx) => {
+              const isRevealed = discoveredLetters[idx] !== undefined;
+              const isCurrent = islandData.letterIndex === idx;
+
+              return (
+                <div
+                  key={idx}
+                  className={`w-11 h-13 md:w-13 md:h-16 rounded-xl border-2 flex flex-col items-center justify-center transition-all ${
+                    isRevealed
+                      ? 'bg-gradient-to-b from-yellow-300 to-amber-400 text-amber-950 border-yellow-200 shadow-md scale-105 font-black text-2xl md:text-3xl'
+                      : isCurrent
+                      ? 'bg-teal-500/50 border-yellow-300 border-dashed animate-pulse text-yellow-200 text-lg md:text-xl font-bold'
+                      : 'bg-white/10 border-white/20 text-white/40 text-sm'
+                  }`}
+                >
+                  <span className="text-[9px] uppercase font-bold opacity-60">#{idx + 1}</span>
+                  <span>{isRevealed ? char : isCurrent ? '?' : '—'}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* TARJETA DIDÁCTICA DE PROBLEMA MATEMÁTICO */}
+      {currentExercise.contextQuestion && !islandData && (
         <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-3xl p-5 border-2 border-amber-200 shadow-md text-left space-y-2">
           <div className="flex items-center gap-2 text-amber-900 font-black text-xs uppercase tracking-wider">
             <BookOpen className="w-4 h-4 text-amber-600" />
@@ -230,6 +289,10 @@ export const GamePlay: React.FC<GamePlayProps> = ({
               <>
                 <Hand className="w-3.5 h-3.5 text-purple-600" /> ¡Arrastra el número o tócalo!
               </>
+            ) : islandData ? (
+              <>
+                <Award className="w-3.5 h-3.5 text-purple-600" /> Cofre Secreto: Letra [{islandData.letter}]
+              </>
             ) : currentExercise.contextQuestion ? (
               <>
                 <Award className="w-3.5 h-3.5 text-purple-600" /> Desafío Contextual
@@ -251,11 +314,10 @@ export const GamePlay: React.FC<GamePlayProps> = ({
           )}
         </div>
 
-        {/* FORMATO 1: PRESENTACIÓN VERTICAL (Para sumas, restas y multiplicaciones por columnas) */}
+        {/* FORMATO 1: PRESENTACIÓN VERTICAL */}
         {isVertical ? (
           <div className="flex flex-col items-center justify-center py-2">
             <div className="inline-block text-right font-black text-4xl sm:text-5xl md:text-6xl text-slate-800 tracking-wider font-mono">
-              {/* Encabezado posicional suave para niños (C D U) */}
               <div className="flex justify-end gap-5 text-xs text-slate-400 tracking-widest font-sans font-bold pr-2 pb-1">
                 {Math.max(currentExercise.num1, currentExercise.num2) >= 100 && <span>C</span>}
                 {Math.max(currentExercise.num1, currentExercise.num2) >= 10 && <span>D</span>}
@@ -318,14 +380,13 @@ export const GamePlay: React.FC<GamePlayProps> = ({
             </div>
           </div>
         ) : (
-          /* FORMATO 2: PRESENTACIÓN HORIZONTAL (Para problemas o multiplicaciones simples) */
+          /* FORMATO 2: PRESENTACIÓN HORIZONTAL */
           <div className="flex flex-wrap items-center justify-center gap-3 md:gap-5 text-4xl sm:text-5xl md:text-6xl font-black text-slate-800 tracking-wider py-4">
             <span className="text-purple-600">{currentExercise.num1}</span>
             <span className="text-pink-500">{currentExercise.operator}</span>
             <span className="text-indigo-600">{currentExercise.num2}</span>
             <span className="text-slate-400">=</span>
 
-            {/* Caja receptora (Dropzone) */}
             <div
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
@@ -364,7 +425,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
           </div>
         )}
 
-        {/* Guía didáctica de pasos de reagrupación (Práctica 2 y 3 del cuaderno) */}
+        {/* Guía didáctica de pasos de reagrupación */}
         {currentExercise.regroupingSteps && (
           <div className="mt-4 pt-3 border-t border-slate-100 text-left bg-purple-50/70 p-3 rounded-2xl text-xs text-purple-950 space-y-1">
             <p className="font-bold text-purple-800">📝 Pasos para resolver:</p>
@@ -377,7 +438,11 @@ export const GamePlay: React.FC<GamePlayProps> = ({
         <div className="h-9 mt-3 flex items-center justify-center">
           {feedbackState === 'correct' && (
             <div className="text-emerald-700 font-black text-base md:text-lg flex items-center gap-2 animate-bounce">
-              <span>🌟 ¡Excelente, Sofía! ¡Respuesta correcta!</span>
+              <span>
+                {islandData
+                  ? `🗝️ ¡Genial! Has desbloqueado la letra [ ${islandData.letter} ]`
+                  : '🌟 ¡Excelente, Sofía! ¡Respuesta correcta!'}
+              </span>
             </div>
           )}
           {feedbackState === 'wrong' && (
