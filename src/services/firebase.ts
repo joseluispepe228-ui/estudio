@@ -20,13 +20,16 @@ export const db = configData.firestoreDatabaseId && configData.firestoreDatabase
   ? getFirestore(app, configData.firestoreDatabaseId)
   : getFirestore(app);
 
+// ID global compartido para sincronización en tiempo real entre teléfono, tablet y ordenador de Sofía
+export const SHARED_STUDENT_ID = 'sofia_shared_math_profile';
+
 // Iniciar sesión anónima automáticamente si no está autenticado
 export async function ensureAuth() {
   if (!auth.currentUser) {
     try {
       await signInAnonymously(auth);
     } catch (err) {
-      console.warn('Advertencia en autenticación anónima de Firebase:', err);
+      console.warn('Advertencia en autenticación de Firebase:', err);
     }
   }
   return auth.currentUser;

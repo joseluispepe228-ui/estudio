@@ -1,5 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Clock, Flame, CheckCircle2, XCircle, Hand, Sparkles } from 'lucide-react';
+import {
+  Sparkles,
+  Clock,
+  ArrowLeft,
+  Hand,
+  BookOpen,
+  HelpCircle,
+  Award,
+  Layers
+} from 'lucide-react';
 import type { Exercise, ExerciseResult } from '../types/math';
 import { playSound, fireSuccessConfetti } from '../utils/effects';
 
@@ -22,79 +31,83 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   const [results, setResults] = useState<ExerciseResult[]>([]);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [feedbackState, setFeedbackState] = useState<'idle' | 'correct' | 'wrong'>('idle');
-  const [sessionStreak, setSessionStreak] = useState(0);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [showHint, setShowHint] = useState(false);
 
-  // Temporizador
-  const exerciseStartTimeRef = useRef<number>(Date.now());
+  // Temporizador opcional
   const [timeLeft, setTimeLeft] = useState(15);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const exerciseStartTimeRef = useRef<number>(Date.now());
 
   const currentExercise = exercises[currentIndex];
   const isDragMode = currentExercise?.interactionStyle === 'drag_and_drop';
+  const isVertical = currentExercise?.layout === 'vertical' || currentExercise?.type === 'addition' || currentExercise?.type === 'subtraction';
 
   useEffect(() => {
     exerciseStartTimeRef.current = Date.now();
-    setTimeLeft(15);
-    setFeedbackState('idle');
     setSelectedOption(null);
-    setIsDraggingOver(false);
-  }, [currentIndex]);
+    setFeedbackState('idle');
+    setShowHint(false);
 
-  useEffect(() => {
-    if (!timerEnabled || feedbackState !== 'idle') return;
+    if (timerEnabled) {
+      setTimeLeft(15);
+      if (timerRef.current) clearInterval(timerRef.current);
+      timerRef.current = setInterval(() => {
+        setTimeLeft((prev) => {
+          if (prev <= 1) {
+            handleTimeOut();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
 
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          handleTimeOut();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [currentIndex, feedbackState, timerEnabled]);
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [currentIndex, timerEnabled]);
 
   const handleTimeOut = () => {
+    if (feedbackState !== 'idle') return;
     handleSelectAnswer(-9999);
   };
 
-  const handleSelectAnswer = (userAnswer: number) => {
+  const handleSelectAnswer = (chosenNumber: number) => {
     if (feedbackState !== 'idle') return;
+    if (timerRef.current) clearInterval(timerRef.current);
 
-    setSelectedOption(userAnswer);
     const timeSpentMs = Date.now() - exerciseStartTimeRef.current;
-    const isCorrect = userAnswer === currentExercise.correctAnswer;
+    const isCorrect = chosenNumber === currentExercise.correctAnswer;
+
+    setSelectedOption(chosenNumber);
+    setFeedbackState(isCorrect ? 'correct' : 'wrong');
 
     if (isCorrect) {
-      setFeedbackState('correct');
-      setSessionStreak((s) => s + 1);
       playSound('correct');
       fireSuccessConfetti();
     } else {
-      setFeedbackState('wrong');
-      setSessionStreak(0);
       playSound('wrong');
     }
 
-    const newResult: ExerciseResult = {
+    // Registrar resultado pedagógico
+    const resultItem: ExerciseResult = {
       exerciseId: currentExercise.id,
       type: currentExercise.type,
       prompt: `${currentExercise.num1} ${currentExercise.operator} ${currentExercise.num2}`,
       num1: currentExercise.num1,
       num2: currentExercise.num2,
-      userAnswer,
+      userAnswer: chosenNumber,
       correctAnswer: currentExercise.correctAnswer,
       isCorrect,
       timeSpentMs,
       categoryKey: currentExercise.categoryKey,
     };
 
-    const updatedResults = [...results, newResult];
+    const updatedResults = [...results, resultItem];
     setResults(updatedResults);
 
+    // Pausa didáctica de 1.4s para que Sofía observe la retroalimentación
     setTimeout(() => {
       if (currentIndex + 1 < exercises.length) {
         setCurrentIndex((i) => i + 1);
@@ -104,7 +117,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     }, 1400);
   };
 
-  // Manejo de eventos de Drag & Drop (HTML5 Drag & Drop nativo)
+  // Manejo de eventos de Drag & Drop
   const handleDragStart = (e: React.DragEvent, option: number) => {
     e.dataTransfer.setData('text/plain', option.toString());
     playSound('click');
@@ -134,7 +147,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   if (!currentExercise) return null;
 
   return (
-    <div className="w-full max-w-2xl mx-auto px-4 py-4 md:py-8 space-y-6 select-none">
+    <div className="w-full max-w-2xl mx-auto px-4 py-4 md:py-8 space-y-5 select-none">
       {/* Barra de progreso superior y controles */}
       <div className="flex items-center justify-between gap-3 bg-white/90 backdrop-blur rounded-2xl p-4 shadow-md border border-slate-100">
         <button
@@ -162,12 +175,6 @@ export const GamePlay: React.FC<GamePlayProps> = ({
           </div>
         </div>
 
-        {/* Indicador de Racha */}
-        <div className="flex items-center gap-1 bg-orange-50 border border-orange-200 px-3 py-1.5 rounded-xl">
-          <Flame className={`w-5 h-5 ${sessionStreak > 0 ? 'text-orange-500 fill-orange-400 animate-bounce' : 'text-slate-300'}`} />
-          <span className="text-sm font-black text-orange-950">{sessionStreak}</span>
-        </div>
-
         {/* Temporizador */}
         {timerEnabled && (
           <div className={`flex items-center gap-1 px-3 py-1.5 rounded-xl font-black text-sm border ${
@@ -179,8 +186,35 @@ export const GamePlay: React.FC<GamePlayProps> = ({
         )}
       </div>
 
-      {/* Zona didáctica de la Operación Matemática */}
-      <div className={`relative bg-white rounded-3xl p-6 md:p-10 shadow-2xl border-4 text-center transition-all duration-300 ${
+      {/* TARJETA DIDÁCTICA DE PROBLEMA MATEMÁTICO (Si existe contexto como en el cuaderno) */}
+      {currentExercise.contextQuestion && (
+        <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-3xl p-5 border-2 border-amber-200 shadow-md text-left space-y-2">
+          <div className="flex items-center gap-2 text-amber-900 font-black text-xs uppercase tracking-wider">
+            <BookOpen className="w-4 h-4 text-amber-600" />
+            <span>Problema de la Vida Diaria</span>
+          </div>
+          <p className="text-slate-800 font-semibold text-sm md:text-base leading-relaxed">
+            {currentExercise.contextQuestion.story}
+          </p>
+          <div className="bg-white/80 rounded-2xl p-3 border border-amber-200 text-purple-900 font-black text-sm md:text-base flex items-center justify-between">
+            <span>{currentExercise.contextQuestion.subQuestion}</span>
+            <button
+              onClick={() => setShowHint(!showHint)}
+              className="text-xs px-2.5 py-1 bg-amber-200 hover:bg-amber-300 text-amber-950 rounded-lg flex items-center gap-1 transition"
+            >
+              <HelpCircle className="w-3.5 h-3.5" /> Pista
+            </button>
+          </div>
+          {showHint && currentExercise.contextQuestion.visualHint && (
+            <div className="text-xs text-amber-800 bg-amber-100/80 p-2.5 rounded-xl font-medium animate-in fade-in">
+              💡 <strong>Pista de Sofía:</strong> {currentExercise.contextQuestion.visualHint}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ZONA PRINCIPAL DE LA OPERACIÓN */}
+      <div className={`relative bg-white rounded-3xl p-6 md:p-8 shadow-2xl border-4 text-center transition-all duration-300 ${
         feedbackState === 'correct'
           ? 'border-emerald-400 bg-emerald-50/40 scale-[1.02]'
           : feedbackState === 'wrong'
@@ -196,121 +230,204 @@ export const GamePlay: React.FC<GamePlayProps> = ({
               <>
                 <Hand className="w-3.5 h-3.5 text-purple-600" /> ¡Arrastra el número o tócalo!
               </>
+            ) : currentExercise.contextQuestion ? (
+              <>
+                <Award className="w-3.5 h-3.5 text-purple-600" /> Desafío Contextual
+              </>
             ) : (
               <>
                 <Sparkles className="w-3.5 h-3.5 text-purple-600" />
-                {currentExercise.type === 'multiplication' && 'Multiplicación Mágica'}
-                {currentExercise.type === 'addition' && 'Suma Veloz'}
-                {currentExercise.type === 'subtraction' && (currentExercise.hasRegrouping ? 'Resta con Reserva 💡' : 'Resta Rápida')}
+                {currentExercise.type === 'multiplication' && (currentExercise.hasRegrouping ? 'Multiplicación con Reagrupación' : 'Multiplicación Mágica')}
+                {currentExercise.type === 'addition' && 'Suma Vertical'}
+                {currentExercise.type === 'subtraction' && (currentExercise.hasRegrouping ? 'Resta Vertical con Reserva 💡' : 'Resta Vertical')}
               </>
             )}
           </span>
+
+          {isVertical && (
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1">
+              <Layers className="w-3 h-3 text-blue-500" /> Formato Vertical Didáctico
+            </span>
+          )}
         </div>
 
-        {/* Enunciado matemático con la diana de soltado (Dropzone) */}
-        <div className="flex flex-wrap items-center justify-center gap-3 md:gap-5 text-5xl md:text-7xl font-black text-slate-800 tracking-wider py-4">
-          <span className="text-purple-600">{currentExercise.num1}</span>
-          <span className="text-pink-500">{currentExercise.operator}</span>
-          <span className="text-indigo-600">{currentExercise.num2}</span>
-          <span className="text-slate-400">=</span>
+        {/* FORMATO 1: PRESENTACIÓN VERTICAL (Para sumas, restas y multiplicaciones por columnas) */}
+        {isVertical ? (
+          <div className="flex flex-col items-center justify-center py-2">
+            <div className="inline-block text-right font-black text-4xl sm:text-5xl md:text-6xl text-slate-800 tracking-wider font-mono">
+              {/* Encabezado posicional suave para niños (C D U) */}
+              <div className="flex justify-end gap-5 text-xs text-slate-400 tracking-widest font-sans font-bold pr-2 pb-1">
+                {Math.max(currentExercise.num1, currentExercise.num2) >= 100 && <span>C</span>}
+                {Math.max(currentExercise.num1, currentExercise.num2) >= 10 && <span>D</span>}
+                <span>U</span>
+              </div>
 
-          {/* Caja receptora (Dropzone) */}
-          <div
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            className={`w-20 h-20 md:w-28 md:h-28 rounded-3xl border-4 transition-all duration-200 flex flex-col items-center justify-center font-black ${
-              feedbackState === 'correct'
-                ? 'bg-emerald-500 text-white border-emerald-600 shadow-xl'
-                : feedbackState === 'wrong'
-                ? 'bg-rose-500 text-white border-rose-600'
-                : isDraggingOver
-                ? 'bg-indigo-100 text-indigo-700 border-indigo-500 border-dashed scale-110 shadow-lg'
-                : 'bg-purple-50 text-purple-600 border-purple-300 border-dashed'
-            }`}
-          >
-            {feedbackState === 'idle' ? (
-              selectedOption === null ? (
-                <div className="text-center">
-                  <span className="text-3xl md:text-5xl font-black text-purple-400">?</span>
-                  {isDragMode && (
-                    <span className="block text-[10px] font-bold text-purple-600 uppercase tracking-tighter">
-                      Soltar aquí
-                    </span>
+              {/* Número superior */}
+              <div className="px-4 py-1 text-purple-700">
+                {currentExercise.num1}
+              </div>
+
+              {/* Número inferior precedido del operador */}
+              <div className="flex items-center justify-end px-4 py-1 border-b-4 border-slate-800">
+                <span className="text-pink-500 mr-4 font-black font-sans text-3xl sm:text-4xl">
+                  {currentExercise.operator}
+                </span>
+                <span className="text-indigo-600">
+                  {currentExercise.num2}
+                </span>
+              </div>
+
+              {/* Caja de resultado vertical o diana Dropzone */}
+              <div className="pt-3 flex justify-center">
+                <div
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={`min-w-[130px] md:min-w-[170px] h-18 md:h-22 px-4 rounded-2xl border-4 transition-all duration-200 flex flex-col items-center justify-center font-black ${
+                    feedbackState === 'correct'
+                      ? 'bg-emerald-500 text-white border-emerald-600 shadow-xl'
+                      : feedbackState === 'wrong'
+                      ? 'bg-rose-500 text-white border-rose-600'
+                      : isDraggingOver
+                      ? 'bg-indigo-100 text-indigo-700 border-indigo-500 border-dashed scale-105 shadow-lg'
+                      : 'bg-purple-50 text-purple-600 border-purple-300 border-dashed'
+                  }`}
+                >
+                  {feedbackState === 'idle' ? (
+                    selectedOption === null ? (
+                      <div className="text-center">
+                        <span className="text-2xl md:text-3xl font-black text-purple-400">?</span>
+                        {isDragMode && (
+                          <span className="block text-[9px] font-bold text-purple-600 uppercase tracking-tight">
+                            Soltar aquí
+                          </span>
+                        )}
+                      </div>
+                    ) : selectedOption === -9999 ? (
+                      '⏳'
+                    ) : (
+                      selectedOption
+                    )
+                  ) : selectedOption === -9999 ? (
+                    '⏳'
+                  ) : (
+                    selectedOption
                   )}
                 </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* FORMATO 2: PRESENTACIÓN HORIZONTAL (Para problemas o multiplicaciones simples) */
+          <div className="flex flex-wrap items-center justify-center gap-3 md:gap-5 text-4xl sm:text-5xl md:text-6xl font-black text-slate-800 tracking-wider py-4">
+            <span className="text-purple-600">{currentExercise.num1}</span>
+            <span className="text-pink-500">{currentExercise.operator}</span>
+            <span className="text-indigo-600">{currentExercise.num2}</span>
+            <span className="text-slate-400">=</span>
+
+            {/* Caja receptora (Dropzone) */}
+            <div
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className={`w-20 h-20 md:w-28 md:h-28 rounded-3xl border-4 transition-all duration-200 flex flex-col items-center justify-center font-black ${
+                feedbackState === 'correct'
+                  ? 'bg-emerald-500 text-white border-emerald-600 shadow-xl'
+                  : feedbackState === 'wrong'
+                  ? 'bg-rose-500 text-white border-rose-600'
+                  : isDraggingOver
+                  ? 'bg-indigo-100 text-indigo-700 border-indigo-500 border-dashed scale-110 shadow-lg'
+                  : 'bg-purple-50 text-purple-600 border-purple-300 border-dashed'
+              }`}
+            >
+              {feedbackState === 'idle' ? (
+                selectedOption === null ? (
+                  <div className="text-center">
+                    <span className="text-3xl md:text-5xl font-black text-purple-400">?</span>
+                    {isDragMode && (
+                      <span className="block text-[10px] font-bold text-purple-600 uppercase tracking-tighter">
+                        Soltar aquí
+                      </span>
+                    )}
+                  </div>
+                ) : selectedOption === -9999 ? (
+                  '⏳'
+                ) : (
+                  selectedOption
+                )
               ) : selectedOption === -9999 ? (
                 '⏳'
               ) : (
                 selectedOption
-              )
-            ) : selectedOption === -9999 ? (
-              '⏳'
-            ) : (
-              selectedOption
-            )}
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Mensaje de feedback tras responder */}
-        <div className="h-10 mt-2 flex items-center justify-center">
+        {/* Guía didáctica de pasos de reagrupación (Práctica 2 y 3 del cuaderno) */}
+        {currentExercise.regroupingSteps && (
+          <div className="mt-4 pt-3 border-t border-slate-100 text-left bg-purple-50/70 p-3 rounded-2xl text-xs text-purple-950 space-y-1">
+            <p className="font-bold text-purple-800">📝 Pasos para resolver:</p>
+            <p className="font-medium">• {currentExercise.regroupingSteps.step1Prompt}</p>
+            <p className="font-medium">• {currentExercise.regroupingSteps.step2Prompt}</p>
+          </div>
+        )}
+
+        {/* Retroalimentación visual interactiva */}
+        <div className="h-9 mt-3 flex items-center justify-center">
           {feedbackState === 'correct' && (
-            <div className="flex items-center gap-2 text-emerald-600 font-black text-lg md:text-xl animate-bounce">
-              <CheckCircle2 className="w-7 h-7" />
-              ¡Increíble acierto! ¡Ese es el número correcto! ⭐
+            <div className="text-emerald-700 font-black text-base md:text-lg flex items-center gap-2 animate-bounce">
+              <span>🌟 ¡Excelente, Sofía! ¡Respuesta correcta!</span>
             </div>
           )}
           {feedbackState === 'wrong' && (
-            <div className="flex items-center gap-2 text-rose-500 font-bold text-base md:text-lg">
-              <XCircle className="w-6 h-6" />
-              <span>
-                ¡Casi! La respuesta correcta era{' '}
-                <strong className="underline text-rose-700">{currentExercise.correctAnswer}</strong>
-              </span>
+            <div className="text-rose-600 font-black text-sm md:text-base flex items-center gap-1.5 animate-shake">
+              <span>💡 ¡Casi! La respuesta correcta era {currentExercise.correctAnswer}</span>
             </div>
           )}
         </div>
       </div>
 
-      {/* Opciones de números arrastrables y táctiles */}
-      <div>
-        <div className="flex items-center justify-between px-2 mb-2">
-          <p className="text-xs font-bold text-slate-500">
-            {isDragMode ? 'Toma un número con el dedo/ratón y arrástralo a la caja, o pulsa sobre él:' : 'Selecciona la respuesta correcta:'}
+      {/* Opciones de Respuesta Táctil / Fichas para Arrastrar */}
+      <div className="space-y-2 text-center">
+        {isDragMode && (
+          <p className="text-xs text-purple-700 font-bold">
+            Arrastra con tu dedo la ficha o toca para seleccionar:
           </p>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        )}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4">
           {currentExercise.options.map((option, idx) => {
-            const isSelected = selectedOption === option;
-            const isAnswerCorrect = option === currentExercise.correctAnswer;
-
-            let btnStyle = 'bg-white text-slate-800 hover:bg-purple-50 border-2 border-purple-200 shadow-md hover:border-purple-400 hover:scale-105 active:scale-95 cursor-grab active:cursor-grabbing';
+            const isChosen = selectedOption === option;
+            const isRightOne = option === currentExercise.correctAnswer;
+            let btnClass = 'bg-white hover:bg-purple-50 text-slate-800 border-2 border-slate-200 shadow-md active:scale-95';
 
             if (feedbackState !== 'idle') {
-              if (isAnswerCorrect) {
-                btnStyle = 'bg-emerald-500 text-white border-2 border-emerald-600 shadow-xl scale-105';
-              } else if (isSelected && !isAnswerCorrect) {
-                btnStyle = 'bg-rose-400 text-white border-2 border-rose-500 opacity-80';
+              if (isRightOne) {
+                btnClass = 'bg-emerald-500 text-white border-emerald-600 shadow-xl scale-105 ring-4 ring-emerald-200';
+              } else if (isChosen && !isRightOne) {
+                btnClass = 'bg-rose-400 text-white border-rose-500 opacity-60';
               } else {
-                btnStyle = 'bg-slate-100 text-slate-400 border-2 border-slate-200 opacity-50';
+                btnClass = 'bg-slate-100 text-slate-400 border-slate-200 opacity-40';
               }
             }
 
             return (
               <button
-                key={`${option}-${idx}`}
-                id={`math-option-${idx}`}
+                key={idx}
+                id={`game-option-btn-${idx}`}
+                disabled={feedbackState !== 'idle'}
                 draggable={feedbackState === 'idle'}
                 onDragStart={(e) => handleDragStart(e, option)}
-                disabled={feedbackState !== 'idle'}
-                onClick={() => handleSelectAnswer(option)}
-                className={`h-20 md:h-24 rounded-3xl font-black text-3xl md:text-4xl transition-all duration-200 flex flex-col items-center justify-center relative group ${btnStyle}`}
+                onClick={() => {
+                  playSound('click');
+                  handleSelectAnswer(option);
+                }}
+                className={`py-4 md:py-6 px-3 rounded-2xl md:rounded-3xl font-black text-2xl md:text-3xl transition duration-150 cursor-pointer select-none flex flex-col items-center justify-center gap-1 ${btnClass}`}
               >
                 <span>{option}</span>
-                {isDragMode && feedbackState === 'idle' && (
-                  <span className="text-[10px] font-bold text-purple-400 group-hover:text-purple-600 flex items-center gap-0.5">
-                    <Hand className="w-2.5 h-2.5" /> Arrastrar
+                {currentExercise.contextQuestion?.unitLabel && (
+                  <span className="text-[10px] font-bold opacity-80 truncate max-w-full">
+                    {currentExercise.contextQuestion.unitLabel}
                   </span>
                 )}
               </button>

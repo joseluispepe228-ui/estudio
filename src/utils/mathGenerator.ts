@@ -37,7 +37,7 @@ function generateDistractors(correctAnswer: number, min: number = 0, maxOffset: 
   return shuffle(Array.from(options));
 }
 
-// 1. Generar ejercicio de tabla de multiplicar
+// 1. Generar ejercicio de tabla de multiplicar estándar
 export function generateMultiplicationExercise(tableNumber?: number): Exercise {
   const num1 = tableNumber && tableNumber >= 1 && tableNumber <= 12
     ? tableNumber
@@ -65,11 +65,12 @@ export function generateMultiplicationExercise(tableNumber?: number): Exercise {
     operator: '×',
     correctAnswer,
     options: shuffle(finalOptions),
-    categoryKey: `mult-${num1}`
+    categoryKey: `mult-${num1}`,
+    layout: 'horizontal'
   };
 }
 
-// 2. Generar ejercicio de suma (dificultad progresiva 1 a 3 dígitos)
+// 2. Generar ejercicio de suma VERTICAL (con valor posicional)
 export function generateAdditionExercise(difficulty: 'easy' | 'medium' | 'hard' = 'medium'): Exercise {
   let num1 = 0;
   let num2 = 0;
@@ -89,6 +90,13 @@ export function generateAdditionExercise(difficulty: 'easy' | 'medium' | 'hard' 
     hasRegrouping = true;
   }
 
+  // Asegurar que el número mayor vaya arriba en la suma vertical para facilidad visual
+  if (num1 < num2) {
+    const temp = num1;
+    num1 = num2;
+    num2 = temp;
+  }
+
   const correctAnswer = num1 + num2;
   const options = generateDistractors(correctAnswer, 0, 15);
 
@@ -101,22 +109,23 @@ export function generateAdditionExercise(difficulty: 'easy' | 'medium' | 'hard' 
     correctAnswer,
     options,
     hasRegrouping,
-    categoryKey: hasRegrouping ? 'add-regroup' : 'add-standard'
+    categoryKey: hasRegrouping ? 'add-regroup' : 'add-standard',
+    layout: 'vertical' // SIEMPRE VERTICAL para sumas
   };
 }
 
-// 3. Generar ejercicio de resta (incluyendo restas con reserva/llevada)
+// 3. Generar ejercicio de resta VERTICAL (con o sin reserva/llevada)
 export function generateSubtractionExercise(forceRegrouping: boolean = true): Exercise {
   let num1 = 0;
   let num2 = 0;
 
   if (forceRegrouping) {
-    const tens1 = Math.floor(Math.random() * 6) + 3;
-    const units1 = Math.floor(Math.random() * 5);
+    const tens1 = Math.floor(Math.random() * 6) + 3; // 3 a 8
+    const units1 = Math.floor(Math.random() * 5); // 0 a 4
     num1 = tens1 * 10 + units1;
 
-    const tens2 = Math.floor(Math.random() * (tens1 - 1)) + 1;
-    const units2 = Math.floor(Math.random() * 4) + 6;
+    const tens2 = Math.floor(Math.random() * (tens1 - 1)) + 1; // menor decena
+    const units2 = Math.floor(Math.random() * 4) + 6; // 6 a 9 (mayor que units1 -> provoca préstamo)
     num2 = tens2 * 10 + units2;
   } else {
     num1 = Math.floor(Math.random() * 60) + 30;
@@ -125,6 +134,10 @@ export function generateSubtractionExercise(forceRegrouping: boolean = true): Ex
       const temp = num1;
       num1 = num2;
       num2 = temp;
+    }
+    // Asegurar que no necesite reserva si forceRegrouping es false
+    if ((num1 % 10) < (num2 % 10)) {
+      num1 += 10;
     }
   }
 
@@ -140,22 +153,258 @@ export function generateSubtractionExercise(forceRegrouping: boolean = true): Ex
     correctAnswer,
     options,
     hasRegrouping: (num1 % 10) < (num2 % 10),
-    categoryKey: (num1 % 10) < (num2 % 10) ? 'sub-regroup' : 'sub-standard'
+    categoryKey: (num1 % 10) < (num2 % 10) ? 'sub-regroup' : 'sub-standard',
+    layout: 'vertical' // SIEMPRE VERTICAL para facilitar la resta a los niños
   };
 }
 
-// 4. Generar ronda de 10 ejercicios adaptados según modo de juego
+// 4. NUEVO: Generador de Problemas Matemáticos Contextualizados (del cuaderno de Sofía)
+export function generateWordProblemExercise(): Exercise {
+  const problemTemplates = [
+    {
+      story: 'La tía Flor recolecta ciruelas frescas de su huerto todos los días.',
+      subQuestion: 'Si recolecta 22 ciruelas cada día, ¿cuántas ciruelas recolectó en 4 días?',
+      num1: 22,
+      num2: 4,
+      unitLabel: 'ciruelas',
+      iconName: 'fruit' as const,
+      visualHint: 'Multiplica 22 ciruelas × 4 días'
+    },
+    {
+      story: 'Rosita guarda monedas en su alcancía todos los meses.',
+      subQuestion: 'Si reúne 143 monedas cada mes, ¿cuántas monedas reunirá en 2 meses?',
+      num1: 143,
+      num2: 2,
+      unitLabel: 'monedas',
+      iconName: 'coin' as const,
+      visualHint: 'Multiplica 143 monedas × 2 meses'
+    },
+    {
+      story: 'El ratón amistoso regaló dulces deliciosos a sus amigos la semana pasada.',
+      subQuestion: 'Si regaló 232 dulces la semana pasada y esta semana regaló la misma cantidad, ¿cuántos dulces regaló en total?',
+      num1: 232,
+      num2: 2,
+      unitLabel: 'dulces',
+      iconName: 'candy' as const,
+      visualHint: '232 dulces × 2 semanas'
+    },
+    {
+      story: 'José organiza su colección de autos de juguete en cajas ordenadas.',
+      subQuestion: 'Tiene 7 cajas con autos de juguete. Si en cada caja tiene 5 autos, ¿cuántos autos de juguete tiene José en total?',
+      num1: 7,
+      num2: 5,
+      unitLabel: 'autos de juguete',
+      iconName: 'car' as const,
+      visualHint: '7 cajas × 5 autos en cada caja'
+    },
+    {
+      story: 'Lina prepara meriendas nutritivas para sus compañeros de clase.',
+      subQuestion: 'Tenía 9 bandejas y puso 5 sándwiches de queso en cada una. ¿Cuántos sándwiches preparó en total?',
+      num1: 9,
+      num2: 5,
+      unitLabel: 'sándwiches de queso',
+      iconName: 'candy' as const,
+      visualHint: '9 bandejas × 5 sándwiches'
+    },
+    {
+      story: 'En el supermercado venden cajas de huevos de campo frescas.',
+      subQuestion: 'Mi mamá compró 3 cajas de huevos. Si cada caja contiene 6 huevos, ¿cuántos huevos compró en total?',
+      num1: 3,
+      num2: 6,
+      unitLabel: 'huevos',
+      iconName: 'fruit' as const,
+      visualHint: '3 cajas × 6 huevos'
+    },
+    {
+      story: 'La familia de Sofía toma mucha leche para crecer fuerte.',
+      subQuestion: 'Compraron 3 packs de cajas de leche. Si cada pack trae 10 cajas, ¿cuántas cajas de leche compró?',
+      num1: 3,
+      num2: 10,
+      unitLabel: 'cajas de leche',
+      iconName: 'milk' as const,
+      visualHint: '3 packs × 10 cajas de leche'
+    },
+    {
+      story: 'Karina compró mostacillas de colores para hacer collares de regalo.',
+      subQuestion: 'Ella usa 5 mostacillas para hacer 1 collar. ¿Cuántas mostacillas necesita para hacer 8 collares?',
+      num1: 8,
+      num2: 5,
+      unitLabel: 'mostacillas',
+      iconName: 'candy' as const,
+      visualHint: '8 collares × 5 mostacillas'
+    },
+    {
+      story: 'Los estudiantes solidarios donaron leche para el comedor escolar.',
+      subQuestion: '9 estudiantes donaron leche. Si cada uno donó 5 litros de leche, ¿cuántos litros se recolectaron?',
+      num1: 9,
+      num2: 5,
+      unitLabel: 'litros de leche',
+      iconName: 'milk' as const,
+      visualHint: '9 estudiantes × 5 litros'
+    },
+    {
+      story: 'Carmen guarda sus cuentos y libros de estudio en cajas.',
+      subQuestion: 'Guarda algunos libros en 10 cajas. Si en cada caja guarda 5 libros, ¿cuántos libros guarda en total?',
+      num1: 10,
+      num2: 5,
+      unitLabel: 'libros',
+      iconName: 'books' as const,
+      visualHint: '10 cajas × 5 libros'
+    },
+    {
+      story: 'Gugo pasea por el bosque primaveral juntando flores silvestres.',
+      subQuestion: 'Gugo hace 4 ramos de flores. Si cada ramo tiene 10 flores, ¿cuántas flores reunió Gugo en total?',
+      num1: 4,
+      num2: 10,
+      unitLabel: 'flores',
+      iconName: 'flower' as const,
+      visualHint: '4 ramos × 10 flores en cada uno'
+    },
+    {
+      story: 'Gugo les pide a 3 alumnos que levanten ambas manos en el aula.',
+      subQuestion: 'Hay 5 dedos en cada mano (10 dedos por alumno). Si son 6 manos en total con 5 dedos cada una, ¿cuántos dedos tienen?',
+      num1: 6,
+      num2: 5,
+      unitLabel: 'dedos',
+      iconName: 'car' as const,
+      visualHint: '6 manos × 5 dedos = ?'
+    }
+  ];
+
+  const template = problemTemplates[Math.floor(Math.random() * problemTemplates.length)];
+  const correctAnswer = template.num1 * template.num2;
+  const options = generateDistractors(correctAnswer, 0, 15);
+
+  return {
+    id: `word-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+    type: 'multiplication',
+    num1: template.num1,
+    num2: template.num2,
+    operator: '×',
+    correctAnswer,
+    options,
+    categoryKey: 'word-problem',
+    layout: template.num1 > 99 ? 'vertical' : 'horizontal',
+    contextQuestion: {
+      story: template.story,
+      subQuestion: template.subQuestion,
+      unitLabel: template.unitLabel,
+      iconName: template.iconName,
+      visualHint: template.visualHint
+    }
+  };
+}
+
+// 5. NUEVO: Multiplicación Reagrupando Unidades, Decenas y Centenas (Práctica 2 y 3 del cuaderno)
+export function generateRegroupingMultExercise(): Exercise {
+  // Ejemplos como 18 × 7, 35 × 5, 486 × 2, 279 × 3, 304 × 3, 156 × 4, 174 × 4, 196 × 4, 238 × 4, 248 × 4, 155 × 5, 199 × 5
+  const samplePairs = [
+    { n1: 18, n2: 7 },
+    { n1: 35, n2: 5 },
+    { n1: 486, n2: 2 },
+    { n1: 279, n2: 3 },
+    { n1: 304, n2: 3 },
+    { n1: 156, n2: 4 },
+    { n1: 174, n2: 4 },
+    { n1: 196, n2: 4 },
+    { n1: 238, n2: 4 },
+    { n1: 248, n2: 4 },
+    { n1: 155, n2: 5 },
+    { n1: 199, n2: 5 },
+  ];
+
+  const pick = samplePairs[Math.floor(Math.random() * samplePairs.length)];
+  const correctAnswer = pick.n1 * pick.n2;
+  const options = generateDistractors(correctAnswer, 0, 30);
+
+  // Calcular desglose de unidades y decenas para guía paso a paso
+  const unitsOnly = pick.n1 % 10;
+  const tensOnly = Math.floor((pick.n1 % 100) / 10);
+  const unitsMult = unitsOnly * pick.n2;
+  const regroupTens = Math.floor(unitsMult / 10);
+  const remUnits = unitsMult % 10;
+
+  return {
+    id: `regroup-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+    type: 'multiplication',
+    num1: pick.n1,
+    num2: pick.n2,
+    operator: '×',
+    correctAnswer,
+    options,
+    hasRegrouping: true,
+    categoryKey: 'regrouping-mult',
+    layout: 'vertical',
+    regroupingSteps: {
+      step1Prompt: `1° Multiplica unidades: ${unitsOnly} × ${pick.n2} = ${unitsMult} unidades (${regroupTens > 0 ? `reagrupa ${regroupTens} decenas y deja ${remUnits}` : `${unitsMult} unidades`})`,
+      step2Prompt: `2° Multiplica decenas: ${tensOnly} × ${pick.n2} = ${tensOnly * pick.n2} decenas`,
+      step3Prompt: `3° Suma la reagrupación y obtén el resultado final.`
+    }
+  };
+}
+
+// 6. NUEVO: Descifrar la Isla del Tesoro (Práctica 3 del cuaderno: "En la isla de C-H-I-L-O-E")
+export function generateIslandTreasureExercises(): Exercise[] {
+  // Lista de cofres con letras para formar CHILOE o ISLAS
+  const islandItems = [
+    { n1: 486, n2: 2, letter: 'C', ans: 972 },
+    { n1: 156, n2: 4, letter: 'H', ans: 624 },
+    { n1: 248, n2: 4, letter: 'I', ans: 992 },
+    { n1: 35, n2: 5, letter: 'L', ans: 175 },
+    { n1: 199, n2: 5, letter: 'O', ans: 995 },
+    { n1: 279, n2: 3, letter: 'E', ans: 837 },
+  ];
+
+  return islandItems.map((item) => ({
+    id: `island-${item.letter}-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`,
+    type: 'multiplication',
+    num1: item.n1,
+    num2: item.n2,
+    operator: '×',
+    correctAnswer: item.ans,
+    options: generateDistractors(item.ans, 0, 25),
+    categoryKey: 'island-treasure',
+    layout: 'vertical',
+    contextQuestion: {
+      story: `Cofre secreto con la letra mágica [ ${item.letter} ] 🗝️`,
+      subQuestion: `Resuelve ${item.n1} × ${item.n2} para descubrir la clave de la Isla de CHILOÉ:`,
+      unitLabel: `clave letra ${item.letter}`,
+      iconName: 'island',
+      visualHint: `Multiplica con reserva: ${item.n1} × ${item.n2}`
+    }
+  }));
+}
+
+// 7. Generador de rondas de ejercicios por modo
 export function generateSessionExercises(
-  mode: 'adventure' | 'multiplication' | 'addition' | 'subtraction' | 'ai_recommended' | 'drag_drop' | 'match_pairs',
+  mode:
+    | 'adventure'
+    | 'multiplication'
+    | 'addition'
+    | 'subtraction'
+    | 'ai_recommended'
+    | 'drag_drop'
+    | 'match_pairs'
+    | 'word_problems'
+    | 'regrouping_mult'
+    | 'island_treasure',
   selectedTable?: number,
   weakCategories: string[] = []
 ): Exercise[] {
+  if (mode === 'island_treasure') {
+    return generateIslandTreasureExercises();
+  }
+
   const exercises: Exercise[] = [];
 
   for (let i = 0; i < 10; i++) {
     let ex: Exercise;
 
-    if (mode === 'multiplication') {
+    if (mode === 'word_problems') {
+      ex = generateWordProblemExercise();
+    } else if (mode === 'regrouping_mult') {
+      ex = generateRegroupingMultExercise();
+    } else if (mode === 'multiplication') {
       ex = generateMultiplicationExercise(selectedTable);
     } else if (mode === 'addition') {
       const diff = i < 3 ? 'easy' : (i < 7 ? 'medium' : 'hard');
@@ -164,10 +413,14 @@ export function generateSessionExercises(
       const forceRegroup = i % 2 === 0;
       ex = generateSubtractionExercise(forceRegroup);
     } else if (mode === 'drag_drop') {
-      // Modo arrastrar y soltar: mezcla de tablas, sumas y restas
-      if (i % 3 === 0) ex = generateMultiplicationExercise();
-      else if (i % 3 === 1) ex = generateAdditionExercise('easy');
-      else ex = generateSubtractionExercise(false);
+      // Arrastrar y soltar: mezcla con sumas y restas verticales
+      if (i % 3 === 0) {
+        ex = generateMultiplicationExercise();
+      } else if (i % 3 === 1) {
+        ex = generateAdditionExercise('easy');
+      } else {
+        ex = generateSubtractionExercise(false);
+      }
       ex.interactionStyle = 'drag_and_drop';
     } else if (mode === 'ai_recommended' && weakCategories.length > 0) {
       const targetCategory = weakCategories[i % weakCategories.length];
@@ -176,15 +429,21 @@ export function generateSessionExercises(
         ex = generateMultiplicationExercise(tableNum);
       } else if (targetCategory.includes('sub')) {
         ex = generateSubtractionExercise(true);
+      } else if (targetCategory.includes('word')) {
+        ex = generateWordProblemExercise();
       } else {
         ex = generateAdditionExercise('medium');
       }
     } else {
-      // Modo Aventura variado
-      if (i < 4) {
+      // Gran Aventura: incluye problemas del mundo real y sumas/restas verticales
+      if (i === 0 || i === 5) {
+        ex = generateWordProblemExercise();
+      } else if (i === 2 || i === 7) {
+        ex = generateRegroupingMultExercise();
+      } else if (i < 4) {
         ex = generateMultiplicationExercise();
-      } else if (i < 7) {
-        ex = generateAdditionExercise(i === 6 ? 'hard' : 'medium');
+      } else if (i < 8) {
+        ex = generateAdditionExercise('medium');
       } else {
         ex = generateSubtractionExercise(true);
       }
@@ -193,10 +452,10 @@ export function generateSessionExercises(
     exercises.push(ex);
   }
 
-  return shuffle(exercises);
+  return exercises;
 }
 
-// 5. Generar juego de memoria / parejas mágicas (Memory Match)
+// 8. Generar juego de memoria / parejas mágicas (Memory Match)
 export function generateMemoryPairs(count: number = 6): MatchCard[] {
   const pairs: { expression: string; result: number }[] = [
     { expression: '6 × 7', result: 42 },
@@ -205,12 +464,12 @@ export function generateMemoryPairs(count: number = 6): MatchCard[] {
     { expression: '7 × 8', result: 56 },
     { expression: '5 × 9', result: 45 },
     { expression: '12 × 3', result: 36 },
-    { expression: '25 + 35', result: 60 },
-    { expression: '48 + 14', result: 62 },
-    { expression: '70 − 25', result: 45 },
-    { expression: '52 − 17', result: 35 },
-    { expression: '4 × 6', result: 24 },
-    { expression: '9 × 9', result: 81 },
+    { expression: '22 × 4', result: 88 },
+    { expression: '143 × 2', result: 286 },
+    { expression: '7 × 5', result: 35 },
+    { expression: '9 × 5', result: 45 },
+    { expression: '4 × 10', result: 40 },
+    { expression: '3 × 6', result: 18 },
   ];
 
   const selectedPairs = shuffle(pairs).slice(0, count);
@@ -218,7 +477,6 @@ export function generateMemoryPairs(count: number = 6): MatchCard[] {
 
   selectedPairs.forEach((item, index) => {
     const pairId = `pair-${index}`;
-    // Tarjeta con la operación
     cards.push({
       id: `${pairId}-expr`,
       pairId,
@@ -226,7 +484,6 @@ export function generateMemoryPairs(count: number = 6): MatchCard[] {
       isExpression: true,
       isMatched: false,
     });
-    // Tarjeta con el resultado
     cards.push({
       id: `${pairId}-res`,
       pairId,

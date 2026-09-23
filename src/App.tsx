@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { doc, getDoc, setDoc, onSnapshot, collection, query, orderBy, limit, getDocs, deleteDoc } from 'firebase/firestore';
-import { db, auth, ensureAuth } from './services/firebase';
+import { db, ensureAuth, SHARED_STUDENT_ID } from './services/firebase';
 import { analyzeSessionWithGemini } from './services/gemini';
 import type { GameSession, UserStats, AIAnalysisResponse, Exercise, ExerciseResult } from './types/math';
 import { generateSessionExercises } from './utils/mathGenerator';
@@ -11,6 +11,22 @@ import { GamePlay } from './components/GamePlay';
 import { MatchPairsGame } from './components/MatchPairsGame';
 import { SessionSummary } from './components/SessionSummary';
 import { ParentsDashboard } from './components/ParentsDashboard';
+
+// Helper para detectar el tipo de dispositivo
+function detectDeviceType(): 'mobile' | 'tablet' | 'desktop' {
+  if (typeof window === 'undefined') return 'desktop';
+  const width = window.innerWidth;
+  const ua = navigator.userAgent.toLowerCase();
+  const isTabletUA = /(ipad|tablet|(android(?!.*mobile))|(windows(?!.*phone)(.*touch))|kindle|playbook|silk|(puffin(?!.*(IP|AP|WP))))/.test(ua);
+
+  if (isTabletUA || (width >= 600 && width <= 1024)) {
+    return 'tablet';
+  }
+  if (width < 600 || /iphone|ipod|android.*mobile|blackberry|iemobile|opera mini/.test(ua)) {
+    return 'mobile';
+  }
+  return 'desktop';
+}
 
 // Estado inicial limpio desde 0 para el inicio del aprendizaje real de Sofía
 export const zeroStats: UserStats = {
@@ -41,8 +57,8 @@ export const zeroStats: UserStats = {
   },
   weakCategories: [],
   aiRecommendations: {
-    summary: '¡Hola Sofía! Empieza jugando en la Gran Aventura o practicando tu tabla favorita para desbloquear trucos personalizados.',
-    suggestedFocus: ['Gran Aventura', 'Tabla del 2'],
+    summary: '¡Hola Sofía! Empieza jugando en la Gran Aventura o resolviendo los problemas del huerto.',
+    suggestedFocus: ['Gran Aventura', 'Problemas Matemáticos'],
     motivationalQuote: '¡Bienvenida a tu aventura matemática, Sofía! 🌟',
     generatedAt: Date.now()
   }
@@ -52,29 +68,44 @@ export default function App() {
   const [currentView, setCurrentView] = useState<'home' | 'game' | 'match_pairs' | 'summary' | 'parents'>('home');
   const [userStats, setUserStats] = useState<UserStats>(zeroStats);
   const [sessions, setSessions] = useState<GameSession[]>([]);
-  const [currentSessionMode, setCurrentSessionMode] = useState<'adventure' | 'multiplication' | 'addition' | 'subtraction' | 'ai_recommended' | 'drag_drop' | 'match_pairs'>('adventure');
+  const [currentSessionMode, setCurrentSessionMode] = useState<
+    | 'adventure'
+    | 'multiplication'
+    | 'addition'
+    | 'subtraction'
+    | 'ai_recommended'
+    | 'drag_drop'
+    | 'match_pairs'
+    | 'word_problems'
+    | 'regrouping_mult'
+    | 'island_treasure'
+  >('adventure');
   const [currentSessionTable, setCurrentSessionTable] = useState<number | undefined>(undefined);
   const [activeExercises, setActiveExercises] = useState<Exercise[]>([]);
   const [lastFinishedSession, setLastFinishedSession] = useState<GameSession | null>(null);
   const [lastAiAnalysis, setLastAiAnalysis] = useState<AIAnalysisResponse | null>(null);
   const [isLoadingAi, setIsLoadingAi] = useState<boolean>(false);
 
+  // Momento de inicio de la sesión para calcular duración
+  const sessionStartTimeRef = useRef<number>(Date.now());
+
   // Configuración de juego
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [timerEnabled, setTimerEnabled] = useState<boolean>(false);
   const [geminiApiKey, setGeminiApiKey] = useState<string>('');
 
-  // Inicialización y persistencia con Firebase Firestore
+  // Inicialización y persistencia con Firebase Firestore (Multi-dispositivo para teléfono y tablet)
   useEffect(() => {
     let unsubscribeUser: (() => void) | undefined;
     let unsubscribeSessions: (() => void) | undefined;
 
     async function initFirebaseSync() {
       try {
-        const user = await ensureAuth();
-        const userId = user?.uid || 'default_child_profile';
+        await ensureAuth();
+        // Clave global compartida para que el progreso se sincronice entre teléfono y tablet
+        const sharedUserId = SHARED_STUDENT_ID;
 
-        const userDocRef = doc(db, 'users', userId);
+        const userDocRef = doc(db, 'users', sharedUserId);
         const userSnap = await getDoc(userDocRef);
 
         if (!userSnap.exists()) {
@@ -83,15 +114,16 @@ export default function App() {
           setUserStats(userSnap.data() as UserStats);
         }
 
+        // Escuchar estadísticas en tiempo real
         unsubscribeUser = onSnapshot(userDocRef, (snapshot) => {
           if (snapshot.exists()) {
             setUserStats(snapshot.data() as UserStats);
           }
         });
 
-        // Escuchar sesiones en tiempo real
-        const sessionsRef = collection(db, 'users', userId, 'sessions');
-        const q = query(sessionsRef, orderBy('timestamp', 'asc'), limit(50));
+        // Escuchar historial de sesiones en tiempo real (ordenado por fecha de creación)
+        const sessionsRef = collection(db, 'users', sharedUserId, 'sessions');
+        const q = query(sessionsRef, orderBy('timestamp', 'asc'), limit(100));
         unsubscribeSessions = onSnapshot(q, (snapshot) => {
           const loadedSessions: GameSession[] = [];
           snapshot.forEach((d) => {
@@ -120,13 +152,12 @@ export default function App() {
     setLastAiAnalysis(null);
 
     try {
-      const user = auth.currentUser;
-      const userId = user?.uid || 'default_child_profile';
-      const userDocRef = doc(db, 'users', userId);
+      const sharedUserId = SHARED_STUDENT_ID;
+      const userDocRef = doc(db, 'users', sharedUserId);
       await setDoc(userDocRef, zeroStats);
 
       // Borrar sesiones previas de prueba en Firestore
-      const sessionsRef = collection(db, 'users', userId, 'sessions');
+      const sessionsRef = collection(db, 'users', sharedUserId, 'sessions');
       const snaps = await getDocs(sessionsRef);
       const deletePromises = snaps.docs.map((docSnap) => deleteDoc(docSnap.ref));
       await Promise.all(deletePromises);
@@ -137,9 +168,20 @@ export default function App() {
 
   // Iniciar una ronda de juego según el modo seleccionado
   const handleStartMode = (
-    mode: 'adventure' | 'multiplication' | 'addition' | 'subtraction' | 'ai_recommended' | 'drag_drop' | 'match_pairs',
+    mode:
+      | 'adventure'
+      | 'multiplication'
+      | 'addition'
+      | 'subtraction'
+      | 'ai_recommended'
+      | 'drag_drop'
+      | 'match_pairs'
+      | 'word_problems'
+      | 'regrouping_mult'
+      | 'island_treasure',
     table?: number
   ) => {
+    sessionStartTimeRef.current = Date.now();
     setCurrentSessionMode(mode);
     setCurrentSessionTable(table);
 
@@ -162,9 +204,18 @@ export default function App() {
     const score = correctCount * 10;
     const starsEarned = Math.max(1, correctCount);
 
+    const now = Date.now();
+    const durationSeconds = Math.max(1, Math.round((now - sessionStartTimeRef.current) / 1000));
+    const deviceType = detectDeviceType();
+    const timeOfDayLabel = new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
     const newSession: GameSession = {
-      id: `session-${Date.now()}`,
-      timestamp: Date.now(),
+      id: `session-${now}`,
+      timestamp: now,
+      endedAt: now,
+      durationSeconds,
+      deviceType,
+      timeOfDayLabel,
       mode: currentSessionMode,
       selectedTable: currentSessionTable,
       totalExercises,
@@ -180,11 +231,14 @@ export default function App() {
     setCurrentView('summary');
     setIsLoadingAi(true);
 
-    // Actualización de estadísticas
+    // Actualización de estadísticas con fecha y hora de uso
     const updatedStats = { ...userStats };
     updatedStats.totalScore += score;
     updatedStats.totalStars += starsEarned;
     updatedStats.sessionsCount += 1;
+    updatedStats.lastPlayedDate = new Date(now).toLocaleDateString();
+    updatedStats.lastPlayedTime = timeOfDayLabel;
+
     if (correctCount >= 6) {
       updatedStats.currentStreak += 1;
       if (updatedStats.currentStreak > updatedStats.highestStreak) {
@@ -228,14 +282,13 @@ export default function App() {
 
     setUserStats(updatedStats);
 
-    // Sincronizar en Firestore
+    // Sincronizar en Firestore con ID compartido multi-dispositivo
     try {
-      const user = auth.currentUser;
-      const userId = user?.uid || 'default_child_profile';
-      const userDocRef = doc(db, 'users', userId);
+      const sharedUserId = SHARED_STUDENT_ID;
+      const userDocRef = doc(db, 'users', sharedUserId);
       await setDoc(userDocRef, updatedStats, { merge: true });
 
-      const sessionDocRef = doc(db, 'users', userId, 'sessions', newSession.id);
+      const sessionDocRef = doc(db, 'users', sharedUserId, 'sessions', newSession.id);
       await setDoc(sessionDocRef, newSession);
     } catch (err) {
       console.warn('Error al sincronizar con Firestore:', err);
@@ -255,9 +308,8 @@ export default function App() {
       setUserStats(updatedStats);
 
       try {
-        const user = auth.currentUser;
-        const userId = user?.uid || 'default_child_profile';
-        const userDocRef = doc(db, 'users', userId);
+        const sharedUserId = SHARED_STUDENT_ID;
+        const userDocRef = doc(db, 'users', sharedUserId);
         await setDoc(userDocRef, { aiRecommendations: updatedStats.aiRecommendations }, { merge: true });
       } catch {
         // Silencio en caso de red offline
@@ -273,9 +325,12 @@ export default function App() {
     if (currentSessionMode === 'adventure') return '🚀 Gran Aventura';
     if (currentSessionMode === 'drag_drop') return '✋ Arrastra al Resultado';
     if (currentSessionMode === 'match_pairs') return '🧩 Parejas Mágicas';
+    if (currentSessionMode === 'word_problems') return '🍎 Problemas Matemáticos';
+    if (currentSessionMode === 'regrouping_mult') return '🧮 Multiplicación Reagrupando';
+    if (currentSessionMode === 'island_treasure') return '🏝️ Isla del Tesoro (Chiloé)';
     if (currentSessionMode === 'multiplication') return `✖️ Tabla del ${currentSessionTable || 'Mixta'}`;
-    if (currentSessionMode === 'addition') return '➕ Sumas Divertidas';
-    if (currentSessionMode === 'subtraction') return '➖ Restas con Reserva';
+    if (currentSessionMode === 'addition') return '➕ Sumas Verticales';
+    if (currentSessionMode === 'subtraction') return '➖ Restas Verticales';
     return '✨ Reto Adaptativo Gemini';
   };
 
