@@ -37,7 +37,7 @@ function generateDistractors(correctAnswer: number, min: number = 0, maxOffset: 
   return shuffle(Array.from(options));
 }
 
-// 1. Generar ejercicio de tabla de multiplicar estándar
+// 1. Generar ejercicio de tabla de multiplicar estándar (SIEMPRE HORIZONTAL)
 export function generateMultiplicationExercise(tableNumber?: number): Exercise {
   const num1 = tableNumber && tableNumber >= 1 && tableNumber <= 12
     ? tableNumber
@@ -66,11 +66,11 @@ export function generateMultiplicationExercise(tableNumber?: number): Exercise {
     correctAnswer,
     options: shuffle(finalOptions),
     categoryKey: `mult-${num1}`,
-    layout: 'horizontal'
+    layout: 'horizontal' // Multiplicación SIEMPRE horizontal
   };
 }
 
-// 2. Generar ejercicio de suma VERTICAL (con valor posicional)
+// 2. Generar ejercicio de suma VERTICAL (con valor posicional en columnas)
 export function generateAdditionExercise(difficulty: 'easy' | 'medium' | 'hard' = 'medium'): Exercise {
   let num1 = 0;
   let num2 = 0;
@@ -90,7 +90,7 @@ export function generateAdditionExercise(difficulty: 'easy' | 'medium' | 'hard' 
     hasRegrouping = true;
   }
 
-  // Asegurar que el número mayor vaya arriba en la suma vertical para facilidad visual
+  // Asegurar que el número mayor vaya arriba en la suma vertical
   if (num1 < num2) {
     const temp = num1;
     num1 = num2;
@@ -110,7 +110,7 @@ export function generateAdditionExercise(difficulty: 'easy' | 'medium' | 'hard' 
     options,
     hasRegrouping,
     categoryKey: hasRegrouping ? 'add-regroup' : 'add-standard',
-    layout: 'vertical' // SIEMPRE VERTICAL para sumas
+    layout: 'vertical' // Suma SIEMPRE vertical
   };
 }
 
@@ -154,11 +154,11 @@ export function generateSubtractionExercise(forceRegrouping: boolean = true): Ex
     options,
     hasRegrouping: (num1 % 10) < (num2 % 10),
     categoryKey: (num1 % 10) < (num2 % 10) ? 'sub-regroup' : 'sub-standard',
-    layout: 'vertical' // SIEMPRE VERTICAL para facilitar la resta a los niños
+    layout: 'vertical' // Resta SIEMPRE vertical
   };
 }
 
-// 4. Generador de Problemas Matemáticos Contextualizados (del cuaderno escolar)
+// 4. Generador de Problemas Matemáticos Contextualizados (Multiplicaciones en formato horizontal)
 export function generateWordProblemExercise(): Exercise {
   const problemTemplates = [
     {
@@ -284,7 +284,7 @@ export function generateWordProblemExercise(): Exercise {
     correctAnswer,
     options,
     categoryKey: 'word-problem',
-    layout: template.num1 > 99 ? 'vertical' : 'horizontal',
+    layout: 'horizontal', // Multiplicación en problemas SIEMPRE horizontal
     contextQuestion: {
       story: template.story,
       subQuestion: template.subQuestion,
@@ -295,7 +295,7 @@ export function generateWordProblemExercise(): Exercise {
   };
 }
 
-// 5. Multiplicación Reagrupando Unidades, Decenas y Centenas (Práctica 2 y 3 del cuaderno)
+// 5. Multiplicación con Reagrupación (SIEMPRE HORIZONTAL según la instrucción)
 export function generateRegroupingMultExercise(): Exercise {
   const samplePairs = [
     { n1: 18, n2: 7 },
@@ -335,7 +335,7 @@ export function generateRegroupingMultExercise(): Exercise {
     options,
     hasRegrouping: true,
     categoryKey: 'regrouping-mult',
-    layout: 'vertical',
+    layout: 'horizontal', // Multiplicación SIEMPRE horizontal
     regroupingSteps: {
       step1Prompt: `1° Multiplica unidades: ${unitsOnly} × ${pick.n2} = ${unitsMult} unidades (${regroupTens > 0 ? `reagrupa ${regroupTens} decenas y deja ${remUnits}` : `${unitsMult} unidades`})`,
       step2Prompt: `2° Multiplica decenas: ${tensOnly} × ${pick.n2} = ${tensOnly * pick.n2} decenas`,
@@ -345,7 +345,7 @@ export function generateRegroupingMultExercise(): Exercise {
 }
 
 // 6. Colección de Aventuras con Palabras Secretas para la Isla del Tesoro
-// Cada vez que Sofía juega una ronda nueva, se selecciona una palabra misteriosa diferente al azar
+// En suspenso: NO se muestra la pista de las letras que forman la palabra durante el juego.
 export interface IslandAdventure {
   word: string;
   themeName: string;
@@ -356,8 +356,8 @@ export interface IslandAdventure {
 export const ISLAND_ADVENTURES: IslandAdventure[] = [
   {
     word: 'CHILOE',
-    themeName: 'Isla Grande de Chiloé 🏰',
-    description: 'Famosa por sus palafitos de colores, iglesias de madera y mitos mágicos del sur.',
+    themeName: 'Isla Misteriosa del Sur 🏰',
+    description: 'Enigma de un archipiélago lleno de magia y secretos marinos.',
     items: [
       { n1: 486, n2: 2, letter: 'C', ans: 972 },
       { n1: 156, n2: 4, letter: 'H', ans: 624 },
@@ -369,8 +369,8 @@ export const ISLAND_ADVENTURES: IslandAdventure[] = [
   },
   {
     word: 'TESORO',
-    themeName: 'El Tesoro Pirata 🏴‍☠️',
-    description: 'El cofre del capitán con gemas relucientes y monedas de oro puro.',
+    themeName: 'El Enigma del Corsario 🏴‍☠️',
+    description: 'Cofres antiguos cerrados con candados matemáticos.',
     items: [
       { n1: 140, n2: 3, letter: 'T', ans: 420 },
       { n1: 279, n2: 3, letter: 'E', ans: 837 },
@@ -382,8 +382,8 @@ export const ISLAND_ADVENTURES: IslandAdventure[] = [
   },
   {
     word: 'MAGIA',
-    themeName: 'La Cueva Mágica ✨',
-    description: 'Donde los duendes matemáticos esconden hechizos de cálculo rápido.',
+    themeName: 'La Cueva Oculta ✨',
+    description: 'Un misterio protegido por hechiceros de números.',
     items: [
       { n1: 238, n2: 4, letter: 'M', ans: 952 },
       { n1: 125, n2: 3, letter: 'A', ans: 375 },
@@ -394,8 +394,8 @@ export const ISLAND_ADVENTURES: IslandAdventure[] = [
   },
   {
     word: 'PASCUA',
-    themeName: 'Isla de Pascua (Rapa Nui) 🗿',
-    description: 'La misteriosa isla polinésica con los colosales Moais guardianes.',
+    themeName: 'Isla Perdida del Océano 🗿',
+    description: 'Tierra lejana con monolitos de piedra que guardan una palabra oculta.',
     items: [
       { n1: 165, n2: 3, letter: 'P', ans: 495 },
       { n1: 142, n2: 5, letter: 'A', ans: 710 },
@@ -407,8 +407,8 @@ export const ISLAND_ADVENTURES: IslandAdventure[] = [
   },
   {
     word: 'ESTRELLA',
-    themeName: 'El Faro Estelar 🌟',
-    description: 'Guía a los barcos perdidos con la luz de las constelaciones matemáticas.',
+    themeName: 'El Archipiélago del Cielo 🌟',
+    description: 'Un mapa estelar secreto con coordenadas escondidas.',
     items: [
       { n1: 279, n2: 3, letter: 'E', ans: 837 },
       { n1: 185, n2: 2, letter: 'S', ans: 370 },
@@ -422,8 +422,8 @@ export const ISLAND_ADVENTURES: IslandAdventure[] = [
   },
   {
     word: 'DELFIN',
-    themeName: 'Bahía de los Delfines 🐬',
-    description: 'Las aguas cristalinas donde saltan los delfines matemáticos más veloces.',
+    themeName: 'Arrecife Profundo 🐬',
+    description: 'Criaturas de las aguas que custodian un mensaje oculto.',
     items: [
       { n1: 218, n2: 3, letter: 'D', ans: 654 },
       { n1: 279, n2: 3, letter: 'E', ans: 837 },
@@ -435,8 +435,8 @@ export const ISLAND_ADVENTURES: IslandAdventure[] = [
   },
   {
     word: 'PIRATA',
-    themeName: 'Navío del Capitán Barbanegra ⚓',
-    description: 'El viejo galeón con las llaves de todos los cofres del archipiélago.',
+    themeName: 'El Galeón Fantasma ⚓',
+    description: 'Una clave ancestral protegida por viejas cerraduras.',
     items: [
       { n1: 165, n2: 3, letter: 'P', ans: 495 },
       { n1: 125, n2: 3, letter: 'I', ans: 375 },
@@ -448,9 +448,9 @@ export const ISLAND_ADVENTURES: IslandAdventure[] = [
   }
 ];
 
-// Generar una ronda de la Isla del Tesoro con palabra aleatoria o seleccionada
+// Generar una ronda de la Isla del Tesoro con palabra misteriosa (EN SUSPENSO)
+// Multiplicaciones SIEMPRE horizontales
 export function generateIslandTreasureExercises(preferredWord?: string): Exercise[] {
-  // Elegir una aventura al azar si no se especifica
   let adventure = preferredWord
     ? ISLAND_ADVENTURES.find(a => a.word.toLowerCase() === preferredWord.toLowerCase())
     : undefined;
@@ -471,13 +471,13 @@ export function generateIslandTreasureExercises(preferredWord?: string): Exercis
     correctAnswer: item.ans,
     options: generateDistractors(item.ans, 0, 25),
     categoryKey: 'island-treasure',
-    layout: 'vertical',
+    layout: 'horizontal', // Multiplicación SIEMPRE horizontal
     contextQuestion: {
-      story: `Cofre secreto #${idx + 1} del mapa de "${themeName}" 🗝️`,
-      subQuestion: `Resuelve ${item.n1} × ${item.n2} para descubrir la letra mágica [ ${item.letter} ] en la posición ${idx + 1}:`,
-      unitLabel: `clave [${item.letter}]`,
+      story: `Cofre secreto #${idx + 1} del mapa misterioso 🗝️`,
+      subQuestion: `Abre el cofre #${idx + 1} resolviendo: ¿Cuánto es ${item.n1} × ${item.n2}?`,
+      unitLabel: `cofre #${idx + 1}`,
       iconName: 'island',
-      visualHint: `${description} • Multiplica verticalmente: ${item.n1} × ${item.n2}`,
+      visualHint: `${description} • Multiplica: ${item.n1} × ${item.n2}`,
       islandData: {
         targetWord: word,
         themeName,

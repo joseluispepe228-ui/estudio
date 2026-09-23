@@ -9,7 +9,8 @@ import {
   Award,
   Layers,
   Compass,
-  CheckCircle2
+  Lock,
+  Unlock
 } from 'lucide-react';
 import type { Exercise, ExerciseResult } from '../types/math';
 import { playSound, fireSuccessConfetti } from '../utils/effects';
@@ -36,8 +37,8 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [showHint, setShowHint] = useState(false);
 
-  // Registro de letras descubiertas para la Isla del Tesoro
-  const [discoveredLetters, setDiscoveredLetters] = useState<Record<number, string>>({});
+  // Cantidad de cofres abiertos (para mantener el suspenso sin mostrar las letras antes de tiempo)
+  const [unlockedChests, setUnlockedChests] = useState<number[]>([]);
 
   // Temporizador opcional
   const [timeLeft, setTimeLeft] = useState(15);
@@ -46,7 +47,10 @@ export const GamePlay: React.FC<GamePlayProps> = ({
 
   const currentExercise = exercises[currentIndex];
   const isDragMode = currentExercise?.interactionStyle === 'drag_and_drop';
-  const isVertical = currentExercise?.layout === 'vertical' || currentExercise?.type === 'addition' || currentExercise?.type === 'subtraction';
+
+  // REGLA CLAVE: Las multiplicaciones en todos los módulos son HORIZONTALES.
+  // Las sumas y restas son VERTICALES.
+  const isVertical = currentExercise?.type === 'addition' || currentExercise?.type === 'subtraction';
   const islandData = currentExercise?.contextQuestion?.islandData;
 
   useEffect(() => {
@@ -92,12 +96,8 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     if (isCorrect) {
       playSound('correct');
       fireSuccessConfetti();
-      // Si estamos en la Isla del Tesoro, revelar la letra obtenida
       if (islandData) {
-        setDiscoveredLetters((prev) => ({
-          ...prev,
-          [islandData.letterIndex]: islandData.letter
-        }));
+        setUnlockedChests((prev) => [...prev, islandData.letterIndex]);
       }
     } else {
       playSound('wrong');
@@ -199,45 +199,55 @@ export const GamePlay: React.FC<GamePlayProps> = ({
         )}
       </div>
 
-      {/* PANEL ESPECIAL PARA LA ISLA DEL TESORO: MAPA DE PALABRA SECRETA */}
+      {/* PANEL DE LA ISLA DEL TESORO: MÁXIMO SUSPENSO (SIN PISTAS DE LETRAS) */}
       {islandData && (
-        <div className="bg-gradient-to-r from-emerald-600 via-teal-700 to-cyan-800 rounded-3xl p-5 text-white shadow-xl space-y-3 animate-in fade-in">
+        <div className="bg-gradient-to-r from-emerald-700 via-teal-800 to-slate-900 rounded-3xl p-5 text-white shadow-xl space-y-3 animate-in fade-in">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Compass className="w-5 h-5 text-yellow-300 animate-spin" style={{ animationDuration: '8s' }} />
+              <Compass className="w-5 h-5 text-yellow-300 animate-spin" style={{ animationDuration: '10s' }} />
               <div>
                 <span className="text-[10px] font-black uppercase tracking-wider text-teal-200">
-                  Enigma del Archipiélago
+                  Enigma de la Isla Misteriosa 🗝️
                 </span>
                 <h3 className="text-base md:text-lg font-black leading-tight text-yellow-300">
-                  {islandData.themeName}
+                  Palabra Secreta en Suspenso
                 </h3>
               </div>
             </div>
-            <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-white/20 text-white border border-white/20">
-              Palabra de {islandData.totalLetters} letras
+            <span className="text-xs font-bold px-3 py-1 rounded-full bg-black/30 text-yellow-200 border border-yellow-400/30">
+              {unlockedChests.length} / {islandData.totalLetters} cofres abiertos
             </span>
           </div>
 
-          {/* Casillas de letras de la palabra escondida */}
-          <div className="bg-slate-950/40 rounded-2xl p-3.5 border border-white/10 flex items-center justify-center gap-2 md:gap-3 flex-wrap">
-            {islandData.targetWord.split('').map((char, idx) => {
-              const isRevealed = discoveredLetters[idx] !== undefined;
+          <p className="text-xs text-teal-100/90 leading-relaxed">
+            Cada multiplicación que resuelvas abrirá un cofre secreto con candado. ¡La palabra misteriosa se revelará al final!
+          </p>
+
+          {/* Cofres secretos con candado (SIN revelar letras para mantener el misterio) */}
+          <div className="bg-slate-950/60 rounded-2xl p-3.5 border border-white/10 flex items-center justify-center gap-2 md:gap-3 flex-wrap">
+            {islandData.targetWord.split('').map((_, idx) => {
+              const isUnlocked = unlockedChests.includes(idx);
               const isCurrent = islandData.letterIndex === idx;
 
               return (
                 <div
                   key={idx}
-                  className={`w-11 h-13 md:w-13 md:h-16 rounded-xl border-2 flex flex-col items-center justify-center transition-all ${
-                    isRevealed
-                      ? 'bg-gradient-to-b from-yellow-300 to-amber-400 text-amber-950 border-yellow-200 shadow-md scale-105 font-black text-2xl md:text-3xl'
+                  className={`w-11 h-14 md:w-13 md:h-16 rounded-xl border-2 flex flex-col items-center justify-center transition-all ${
+                    isUnlocked
+                      ? 'bg-gradient-to-b from-yellow-400 to-amber-500 text-amber-950 border-yellow-200 shadow-lg scale-105 font-black'
                       : isCurrent
-                      ? 'bg-teal-500/50 border-yellow-300 border-dashed animate-pulse text-yellow-200 text-lg md:text-xl font-bold'
-                      : 'bg-white/10 border-white/20 text-white/40 text-sm'
+                      ? 'bg-teal-600/60 border-yellow-300 border-dashed animate-pulse text-yellow-300'
+                      : 'bg-white/5 border-white/15 text-white/40'
                   }`}
                 >
-                  <span className="text-[9px] uppercase font-bold opacity-60">#{idx + 1}</span>
-                  <span>{isRevealed ? char : isCurrent ? '?' : '—'}</span>
+                  <span className="text-[9px] uppercase font-bold opacity-75">#{idx + 1}</span>
+                  <div className="mt-1">
+                    {isUnlocked ? (
+                      <Unlock className="w-5 h-5 text-amber-950" />
+                    ) : (
+                      <Lock className={`w-4 h-4 ${isCurrent ? 'text-yellow-300' : 'text-slate-400'}`} />
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -291,16 +301,16 @@ export const GamePlay: React.FC<GamePlayProps> = ({
               </>
             ) : islandData ? (
               <>
-                <Award className="w-3.5 h-3.5 text-purple-600" /> Cofre Secreto: Letra [{islandData.letter}]
+                <Award className="w-3.5 h-3.5 text-purple-600" /> Cofre Misterioso #{islandData.letterIndex + 1}
               </>
             ) : currentExercise.contextQuestion ? (
               <>
-                <Award className="w-3.5 h-3.5 text-purple-600" /> Desafío Contextual
+                <Award className="w-3.5 h-3.5 text-purple-600" /> Problema Matemático
               </>
             ) : (
               <>
                 <Sparkles className="w-3.5 h-3.5 text-purple-600" />
-                {currentExercise.type === 'multiplication' && (currentExercise.hasRegrouping ? 'Multiplicación con Reagrupación' : 'Multiplicación Mágica')}
+                {currentExercise.type === 'multiplication' && (currentExercise.hasRegrouping ? 'Multiplicación con Reagrupación' : 'Multiplicación')}
                 {currentExercise.type === 'addition' && 'Suma Vertical'}
                 {currentExercise.type === 'subtraction' && (currentExercise.hasRegrouping ? 'Resta Vertical con Reserva 💡' : 'Resta Vertical')}
               </>
@@ -309,12 +319,12 @@ export const GamePlay: React.FC<GamePlayProps> = ({
 
           {isVertical && (
             <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1">
-              <Layers className="w-3 h-3 text-blue-500" /> Formato Vertical Didáctico
+              <Layers className="w-3 h-3 text-blue-500" /> Formato Vertical
             </span>
           )}
         </div>
 
-        {/* FORMATO 1: PRESENTACIÓN VERTICAL */}
+        {/* FORMATO 1: PRESENTACIÓN VERTICAL (EXCLUSIVO PARA SUMAS Y RESTAS) */}
         {isVertical ? (
           <div className="flex flex-col items-center justify-center py-2">
             <div className="inline-block text-right font-black text-4xl sm:text-5xl md:text-6xl text-slate-800 tracking-wider font-mono">
@@ -339,7 +349,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
                 </span>
               </div>
 
-              {/* Caja de resultado vertical o diana Dropzone */}
+              {/* Caja de resultado vertical */}
               <div className="pt-3 flex justify-center">
                 <div
                   onDragOver={handleDragOver}
@@ -380,10 +390,10 @@ export const GamePlay: React.FC<GamePlayProps> = ({
             </div>
           </div>
         ) : (
-          /* FORMATO 2: PRESENTACIÓN HORIZONTAL */
+          /* FORMATO 2: PRESENTACIÓN HORIZONTAL (PARA TODAS LAS MULTIPLICACIONES EN TODOS LOS MÓDULOS) */
           <div className="flex flex-wrap items-center justify-center gap-3 md:gap-5 text-4xl sm:text-5xl md:text-6xl font-black text-slate-800 tracking-wider py-4">
             <span className="text-purple-600">{currentExercise.num1}</span>
-            <span className="text-pink-500">{currentExercise.operator}</span>
+            <span className="text-pink-500 font-bold">{currentExercise.operator}</span>
             <span className="text-indigo-600">{currentExercise.num2}</span>
             <span className="text-slate-400">=</span>
 
@@ -425,22 +435,22 @@ export const GamePlay: React.FC<GamePlayProps> = ({
           </div>
         )}
 
-        {/* Guía didáctica de pasos de reagrupación */}
+        {/* Guía didáctica opcional de pasos */}
         {currentExercise.regroupingSteps && (
           <div className="mt-4 pt-3 border-t border-slate-100 text-left bg-purple-50/70 p-3 rounded-2xl text-xs text-purple-950 space-y-1">
-            <p className="font-bold text-purple-800">📝 Pasos para resolver:</p>
+            <p className="font-bold text-purple-800">📝 Pasos para calcular:</p>
             <p className="font-medium">• {currentExercise.regroupingSteps.step1Prompt}</p>
             <p className="font-medium">• {currentExercise.regroupingSteps.step2Prompt}</p>
           </div>
         )}
 
-        {/* Retroalimentación visual interactiva */}
+        {/* Retroalimentación visual interactiva (Sin pistas de letras en la isla) */}
         <div className="h-9 mt-3 flex items-center justify-center">
           {feedbackState === 'correct' && (
             <div className="text-emerald-700 font-black text-base md:text-lg flex items-center gap-2 animate-bounce">
               <span>
                 {islandData
-                  ? `🗝️ ¡Genial! Has desbloqueado la letra [ ${islandData.letter} ]`
+                  ? `🗝️ ¡Cofre #${islandData.letterIndex + 1} abierto con éxito!`
                   : '🌟 ¡Excelente, Sofía! ¡Respuesta correcta!'}
               </span>
             </div>

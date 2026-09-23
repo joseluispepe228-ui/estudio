@@ -266,12 +266,12 @@ export const KidsHome: React.FC<KidsHomeProps> = ({
                   🧮
                 </div>
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-white/20 text-white">
-                  Vertical
+                  Desafío
                 </span>
               </div>
               <h4 className="text-lg font-black leading-tight">Multiplica Reagrupando</h4>
               <p className="text-xs text-purple-100 mt-1 leading-relaxed">
-                Multiplicaciones de 2 y 3 dígitos (como 18 × 7 o 486 × 2) con formato vertical y pasos de reserva.
+                Multiplicaciones de 2 y 3 dígitos (como 18 × 7 o 486 × 2) con formato horizontal y pasos de cálculo.
               </p>
             </div>
             <div className="mt-4 pt-3 border-t border-white/20 flex items-center justify-between text-xs font-black text-purple-100 group-hover:text-white">
@@ -280,7 +280,7 @@ export const KidsHome: React.FC<KidsHomeProps> = ({
             </div>
           </div>
 
-          {/* Módulo C: La Isla del Tesoro (Práctica 3: Chiloé) */}
+          {/* Módulo C: La Isla del Tesoro (Enigma en suspenso) */}
           <div
             id="start-island-treasure-card"
             onClick={() => {
@@ -295,12 +295,12 @@ export const KidsHome: React.FC<KidsHomeProps> = ({
                   🏝️
                 </div>
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-yellow-300 text-teal-950">
-                  Desafío
+                  En Suspenso
                 </span>
               </div>
               <h4 className="text-lg font-black leading-tight">La Isla del Tesoro</h4>
               <p className="text-xs text-teal-100 mt-1 leading-relaxed">
-                ¡Palabras secretas dinámicas! Descifra CHILOÉ, TESORO, PASCUA, MAGIA y más abriendo cofres matemáticos.
+                ¡Máximo misterio! Abre todos los cofres resolviendo multiplicaciones horizontales y descubre la palabra secreta al final.
               </p>
             </div>
             <div className="mt-4 pt-3 border-t border-white/20 flex items-center justify-between text-xs font-black text-teal-100 group-hover:text-white">
